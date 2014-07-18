@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+
+    <title>Welcome to velvia.github.io/presentations!</title>
+
+    <link rel="stylesheet" href="reveal/css/reveal.css">
+    <link rel="stylesheet" href="reveal/css/theme/default.css" id="theme">
+    <link rel="stylesheet" href="reveal/lib/css/zenburn.css">
+    <!-- <link rel="stylesheet" href="common.css"> -->
+
+  </head>
+
+  <body>
+    <div class="reveal">
+      <div class="slides">
+
+        <section data-markdown>
+          <script type="text/template">
+              ## Presentations
+
+              - [OLAP with Cassandra and Spark](cassandra-spark-olap-2014/index.html)
+          </script>
+        </section>
+
+      </div>
+    </div>
+
+    <script src="reveal/lib/js/head.min.js"></script>
+    <script src="reveal/js/reveal.js"></script>
+
+    <script>
+
+      Reveal.initialize({
+        controls: true,
+        progress: true,
+        history: true,
+        center: true,
+
+        // Optional libraries used to extend on reveal.js
+        dependencies: [
+          { src: 'reveal/lib/js/classList.js', condition: function() { return !document.body.classList; } },
+          { src: 'reveal/plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+          { src: 'reveal/plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+          { src: 'reveal/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+          { src: 'reveal/plugin/notes/notes.js' }
+        ]
+      });
+
+    </script>
+
+  </body>
+</html>
