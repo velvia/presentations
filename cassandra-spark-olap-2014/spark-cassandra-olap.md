@@ -369,6 +369,6 @@ Data CF
 
 - Monetdb and Infobright - true columnar stores (storage + querying)
 - Cstore-fdw for PostGres - columnar storage only
-- VoltDB - in-memory distributed columnar database (but need to recompile for DDL changes)
+- Vertica and C-Store
 - Google BigQuery - columnar cloud database, Dremel based
 - Amazon RedShift
