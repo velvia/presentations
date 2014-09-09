@@ -58,7 +58,7 @@ Note: We lead the open data and open government movements and organize lots of c
 * Start hitting latency limits at ~10 million rows
 * No robust and inexpensive solution for querying across shards
 * No robust way to scale horizontally
-* Complex and expensive to improve performance (eg rollup tables)
+* Complex and expensive to improve performance (eg rollup tables, huge expensive servers)
 
 ---
 
@@ -78,7 +78,7 @@ Note: We lead the open data and open government movements and organize lots of c
 > When in doubt, use brute force<br>
 > - Ken Thompson
 
-Note: Both traditional RDBMS and OLAP are very complex approaches and expensive to scale.  What if we took a different approach?
+Note: Both traditional RDBMS and OLAP are very expensive to scale, take longer and longer to produce something complex.  What if we took a different approach?
 
 ---
 
