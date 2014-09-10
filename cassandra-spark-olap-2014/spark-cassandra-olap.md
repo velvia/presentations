@@ -1,7 +1,7 @@
 # OLAP with Spark and Cassandra
 
 ### Evan Chan
-### July 2014
+### Sept 2014
 
 ---
 
@@ -10,7 +10,7 @@
 - Principal Engineer, [Socrata, Inc.](http://www.socrata.com)
 - @evanfchan
 - [`http://github.com/velvia`](http://github.com/velvia)
-- Creator of [Spark Job Server](http://github.com/ooyala/spark-jobserver)
+- Creator of [Spark Job Server](http://github.com/spark-jobserver/spark-jobserver)
 
 --
 
@@ -118,7 +118,7 @@ Note: Both traditional RDBMS and OLAP are very expensive to scale, take longer a
 
 Scala solutions:
 
-- Datastax integration: [`https://github.com/datastax/cassandra-driver-spark`](https://github.com/datastax/cassandra-driver-spark)  (CQL-based)
+- Datastax integration: [`https://github.com/datastax/spark-cassandra-connector`](https://github.com/datastax/spark-cassandra-connector)  (CQL-based)
 - [Calliope](http://tuplejump.github.io/calliope/)
 
 --
@@ -314,7 +314,7 @@ Data CF
 
 - Datastax Enterprise now comes with HA Spark
   + HA master, that is.
-- [cassandra-driver-spark](https://github.com/datastax/cassandra-driver-spark)
+- [spark-cassandra-connector](https://github.com/datastax/spark-cassandra-connector)
 
 ---
 
@@ -322,7 +322,7 @@ Data CF
 
 - Appeared with Spark 1.0
 - In-memory columnar store
-- Can read from Parquet now;  Cassandra integration coming
+- Can read from Parquet and JSON now;  Cassandra integration coming
 - Querying is not column-based (yet)
 - No indexes
 - Write custom functions in Scala ....  take that Hive UDFs!!
@@ -330,10 +330,37 @@ Data CF
 
 ---
 
+## Caching a SQL Table from Cassandra
+
+```scala
+sc.cassandraTable[GDeltRow]("gdelt, "1979to2009")
+  .registerAsTable("gdelt")
+sqlContext.cacheTable("gdelt")
+sqlContext.sql("SELECT Actor2Code, Actor2Name, Actor2CountryCode, AvgTone from gdelt ORDER BY AvgTone DESC LIMIT 10").collect()
+```
+
+---
+
+## Some Performance Numbers
+
+- GDELT dataset, 117 million rows, 57 columns
+- Spark 1.0.2,  AWS 8 x c3.xlarge, cached in memory
+
+<p>&nbsp;<p>
+
+| Query     |  Avg time (sec) |
+| :-------- | -- |
+| SELECT count(*) FROM gdelt WHERE Actor2CountryCode = 'CHN'   | 0.49 |
+| SELECT 4 columns Top K  | 1.51 |
+| SELECT Top countries by Avg Tone (Group By) | 2.69 |
+
+---
+
 ## Work Still Needed
 
 - Indexes
 - Columnar querying for fast aggregation
+- Tachyon support for Cassandra/CQL
 - Efficient reading from columnar storage formats
 
 ---
