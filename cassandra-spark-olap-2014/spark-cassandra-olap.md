@@ -40,8 +40,9 @@ Note: We lead the open data and open government movements and organize lots of c
 
 ### Big Data at Socrata
 
-* Hundreds of datasets, each one up to 30 million rows
+* Tens of thousands of datasets, each one up to 30 million rows
 * Customer demand for billion row datasets
+* Want to analyze across datasets
 
 ---
 
@@ -50,6 +51,9 @@ Note: We lead the open data and open government movements and organize lots of c
 - Flexible - complex queries included
   + Sometimes you can't denormalize your data enough
 - Fast - interactive speeds
+- Near Real Time - can't make customers wait hours before querying new data
+
+Note: incredibly hard problem
 
 ---
 
@@ -58,6 +62,7 @@ Note: We lead the open data and open government movements and organize lots of c
 * Start hitting latency limits at ~10 million rows
 * No robust and inexpensive solution for querying across shards
 * No robust way to scale horizontally
+  - PostGres runs query on single thread unless you partition (painful!)
 * Complex and expensive to improve performance (eg rollup tables, huge expensive servers)
 
 ---
@@ -70,7 +75,7 @@ Note: We lead the open data and open government movements and organize lots of c
 
 - Materialize summary for every possible combination
 - Too complicated and brittle
-- Takes forever to compute
+- Takes forever to compute - not for real time
 - Explodes storage and memory
 
 ---
@@ -121,6 +126,8 @@ Scala solutions:
 - Datastax integration: [`https://github.com/datastax/spark-cassandra-connector`](https://github.com/datastax/spark-cassandra-connector)  (CQL-based)
 - [Calliope](http://tuplejump.github.io/calliope/)
 
+Note: will give an example later
+
 --
 
 A bit more work:
@@ -128,16 +135,8 @@ A bit more work:
 * Use traditional Cassandra client with RDDs
 * Use an existing InputFormat, like CqlPagedInputFormat
 
---
-
-## Example Custom Integration using Astyanax
-
-```scala
-  val cassRDD = sc.parallelize(rowkeys).
-                   flatMap { rowkey =>
-                     columnFamily.get(rowkey).execute().asScala
-                   }
-```
+<p>&nbsp;<p>
+Only reason to go here is probably you are not on CQL version of Cassandra, or you're using Shark/Hive.
 
 ---
 
@@ -322,28 +321,36 @@ Data CF
 
 - Appeared with Spark 1.0
 - In-memory columnar store
-- Can read from Parquet and JSON now;  Cassandra integration coming
+- Can read from Parquet and JSON now; direct Cassandra integration coming
 - Querying is not column-based (yet)
 - No indexes
 - Write custom functions in Scala ....  take that Hive UDFs!!
 - Integrates well with MLBase, Scala/Java/Python
 
----
+--
 
 ## Caching a SQL Table from Cassandra
 
+<p>
 ```scala
+val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+
 sc.cassandraTable[GDeltRow]("gdelt, "1979to2009")
   .registerAsTable("gdelt")
 sqlContext.cacheTable("gdelt")
 sqlContext.sql("SELECT Actor2Code, Actor2Name, Actor2CountryCode, AvgTone from gdelt ORDER BY AvgTone DESC LIMIT 10").collect()
 ```
 
----
+<p>&nbsp;<p>
+
+- Remember Spark is lazy, nothing is executed until the `collect()`
+- In Spark 1.1+: `registerTempTable`
+
+--
 
 ## Some Performance Numbers
 
-- GDELT dataset, 117 million rows, 57 columns
+- GDELT dataset, 117 million rows, 57 columns, ~50GB
 - Spark 1.0.2,  AWS 8 x c3.xlarge, cached in memory
 
 <p>&nbsp;<p>
@@ -356,6 +363,14 @@ sqlContext.sql("SELECT Actor2Code, Actor2Name, Actor2CountryCode, AvgTone from g
 
 ---
 
+## Important - Caching
+
+- By default, queries will read data from source - Cassandra - every time
+- Spark RDD Caching - much faster, but big waste of memory (row oriented)
+- Spark SQL table caching - fastest, memory efficient
+
+---
+
 ## Work Still Needed
 
 - Indexes
@@ -365,25 +380,14 @@ sqlContext.sql("SELECT Actor2Code, Actor2Name, Actor2CountryCode, AvgTone from g
 
 ---
 
-## Getting to a Billion Rows / Sec
-
-- Benchmarked at 20 million rows/sec, GROUP BY on two columns, aggregating two more columns.  Per core.
-- 50 cores needed for parallel localized grouping throughput of 1 billion rows
-- ~5-10 additional cores budget for distributed exchange and grouping of locally agggregated groups, depending on result size and network topology
-
-- Above is a custom solution, NOT Spark SQL.
-- Look for integration with Spark/SQL for a proper solution
-
----
-
 ## Lessons
 
 - Extremely fast distributed querying for these use cases
     + Data doesn't change much (and only bulk changes)
     - Analytical queries for subset of columns
     - Focused on numerical aggregations
-    - Small numbers of group bys, limited network interchange of data
-* Spark a bit rough around edges, but evolving fast
+    - Small numbers of group bys
+* For fast query performance, cache your data using Spark SQL
 * Concurrent queries is a frontier with Spark.  Use additional Spark contexts.
 
 ---
@@ -392,10 +396,24 @@ sqlContext.sql("SELECT Actor2Code, Actor2Name, Actor2CountryCode, AvgTone from g
 
 ---
 
-# Some Columnar Alternatives
+## Extra Slides
+
+---
+
+## Example Custom Integration using Astyanax
+
+```scala
+  val cassRDD = sc.parallelize(rowkeys).
+                   flatMap { rowkey =>
+                     columnFamily.get(rowkey).execute().asScala
+                   }
+```
+
+---
+
+## Some Columnar Alternatives
 
 - Monetdb and Infobright - true columnar stores (storage + querying)
-- Cstore-fdw for PostGres - columnar storage only
 - Vertica and C-Store
 - Google BigQuery - columnar cloud database, Dremel based
 - Amazon RedShift
