@@ -1,4 +1,4 @@
-# OLAP with Spark and Cassandra
+# OLAP with Spark and <span class="cassred">Cassandra</span>
 
 ### Evan Chan
 ### Sept 2014
@@ -31,18 +31,18 @@ Note: We lead the open data and open government movements and organize lots of c
 
 ---
 
-### Big Data at Ooyala
-
-* **2.5 billion** analytics pings a day = almost a **trillion** events a year.
-* Roll up tables - 30 million rows per day
-
---
-
 ### Big Data at Socrata
 
 * Tens of thousands of datasets, each one up to 30 million rows
 * Customer demand for billion row datasets
 * Want to analyze across datasets
+
+--
+
+### Big Data at Ooyala
+
+* **2.5 billion** analytics pings a day = almost a **trillion** events a year.
+* Roll up tables - 30 million rows per day
 
 ---
 
@@ -92,7 +92,7 @@ Note: Both traditional RDBMS and OLAP are very expensive to scale, take longer a
 
 --
 
-## Cassandra
+## <span class="cassred">Cassandra</span>
 
 - Horizontally scalable
 - Very flexible data modelling (lists, sets, custom data types)
@@ -115,7 +115,7 @@ Note: Both traditional RDBMS and OLAP are very expensive to scale, take longer a
 
 --
 
-## Spark provides the missing fast, deep analytics piece of Cassandra!
+## Spark provides the missing fast, deep analytics piece of <span class="cassred">Cassandra</span>!
 
 ---
 
@@ -140,7 +140,7 @@ Only reason to go here is probably you are not on CQL version of Cassandra, or y
 
 ---
 
-## A Spark and Cassandra
+## A Spark and <span class="cassred">Cassandra</span>
 ## OLAP Architecture
 
 ---
@@ -301,7 +301,7 @@ Data CF
 
 ---
 
-## So, Great, OLAP with Cassandra and Spark.  Now What?
+## So, Great, OLAP with <span class="cassred">Cassandra</span> and Spark.  Now What?
 
 ---
 
