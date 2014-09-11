@@ -32,8 +32,8 @@ img.fullscreen-img {
 
 .corner-text {
   position: absolute;
-  bottom: 40px;
-  left  : 80px;
+  bottom: 10px;
+  left  : 40px;
   width : 100px;
   height: 100px;
 }
