@@ -137,6 +137,8 @@ res1: scala.collection.parallel.immutable.ParSeq[Int] = ParVector(2, 6, 10, 12, 
   myIntRdd.map(_ * 2).take(100)
 ```
 
+Map and filter Petabytes of data.  Same scala syntax!!
+
 What is really going on under the hood?
 
 ---
@@ -151,7 +153,7 @@ What is really going on under the hood?
 
 ---
 
-## RDD Transformations
+## Under the Hood - `rdd.map()`
 
 <center>
     ![](2014-11-Spark-RDD-XForm.png)
@@ -159,15 +161,78 @@ What is really going on under the hood?
 
 ---
 
-## RDD Actions
+## Under the Hood - `rdd.take()`
+
+- Spark Worker nodes are where computations are run and data is cached
+- Spark *driver* controls the program flow and executes steps like `map`, `take`
+- In this case `take` returns the first n items from the worker nodes to the driver
+
+---
+
+## Laziness
+
+<center>
+    ![](homer_sleeping_donuts.jpg)
+</center>
+
+NOTE: Not the Homer kind of lazy, but lazy collections!
 
 ---
 
 ## Eager vs lazy collections
 
+`myList.map()` returns a new collection immediately.  What about `Stream`s and `Iterator`s?
+
+```scala
+scala> List(1, 2, 3, 4, 5).toStream
+res1: scala.collection.immutable.Stream[Int] = Stream(1, ?)
+```
+
+<p>
+```scala    
+scala> res1.map(_ * 2)
+res2: scala.collection.immutable.Stream[Int] = Stream(2, ?)
+```
+<!-- .element: class="fragment roll-in" -->
+
+It's lazy -- computation is not done until you ask for results:
+<!-- .element: class="fragment roll-in" -->
+
+```scala
+scala> res2.take(3).toList
+res5: List[Int] = List(2, 4, 6)
+```
+<!-- .element: class="fragment roll-in" -->
+
+Note: even the `take(3)` is not enough to produce immediate results.
+
 ---
 
-## How Laziness is achieved
+## Streams vs Iterators
+
+- Both `Stream` and `Iterator` are lazy
+- `Stream`s memoize their results - watch memory usage
+- `Iterator`s are mutable and can only be used once. `Stream`s are immutable and reusable.
+    + Compare `Stream.from(0).take(2).toList` to `Iterator.from(0).take(2).toList`
+- `Stream`s are easy to define functionally using the `#::` operator
+
+---
+
+## How Laziness is Achieved
+
+```scala
+  override final def map[B, That](f: A => B)(implicit bf: CanBuildFrom[Stream[A], B, That]): That = {
+    if (isStreamBuilder(bf)) asThat(
+      if (isEmpty) Stream.Empty
+      else cons(f(head), asStream[B](tail map f))
+    )
+    else super.map(f)(bf)
+  }
+```
+
+- We only evaluate the mapping function f on the first element, then return a `Stream` of the tail elements mapped using f
+- Key to laziness is that the tail is not evaluated
+- New stream has `map f` as part of its state
 
 ---
 
@@ -175,23 +240,133 @@ What is really going on under the hood?
 
 ---
 
-## What's Going on?
+## Spark and Laziness
+
+```scala
+> sparkContext.parallelize((1 to 10)).map( x => x*i)
+res6: org.apache.spark.rdd.RDD[Int] = MappedRDD[2] at map at <console>:33
+```
+
+- How come Spark doesn't produce the mapped result immediately?  Ohhh... Spark is *lazy*...
+- Notice the `MappedRDD` ... Spark remembers each transformation as a wrapper RDD
 
 ---
 
-## Why Laziness is Important for Big Data
+## Spark RDD Actions
+
+To get a series of RDD transformations to actually execute, we need an RDD action function:
+
+```scala
+> res6.count
+res8: Long = 10
+```
+
+```scala
+> res6.collect
+res9: Array[Int] = Array(2, 4, 6, 8, 10, 12, 14, 16, 18, 20)
+```
+
+`count` is a popular way to "force" computation in Spark.
 
 ---
 
-## More fun - grouping and sorting
+## Why Laziness is Important for Spark
+
+- Do as little work as possible - huge difference for big data
+    + eg. `take(n)` only requires computing the first n items
+- Spark can optimize execution plan when all the transformations are known
+    + eg., multiple map and filter steps can be executed in the same phase
+- History of transformations -- the *lineage* - is used for error recovery and resiliency
 
 ---
 
-## TopK in Spark - method 1
+## Caching Data in Spark
+
+- `.cache()` causes Spark to save results of last transformation in worker's heap memory
+- Without cache, full list of transformations has to be run, including reading from input source
+- Like memoization
+- Iterative processing on cached results - eg for linear regression - is a big part of Spark's claim to speed
 
 ---
 
-## TopK in Spark - method 2
+Demo?
+
+---
+
+## More fun - Grouping and Sorting
+
+---
+
+## TopK Word Count in Scala
+
+```scala
+scala> val words = Seq("Apple", "Bear", "Country", "Tahoe", "dork", "p", "e", "Apple", "Bear", "p", "Bear")
+words: Seq[String] = List(Apple, Bear, Country, Tahoe, dork, p, e, Apple, Bear, p, Bear)
+```
+```scala
+scala> words.groupBy(x => x).
+     |       map { case (word, words) => (word, words.length) }.
+     |       toSeq.
+     |       sortBy(_._2).
+     |       reverse.
+     |       take(5)
+res3: Seq[(String, Int)] = ArrayBuffer((Bear,3), (p,2), (Apple,2), (Tahoe,1), (dork,1))
+```
+
+Note: Hopefully not a mystery to anyone.  Go over line by line?
+This is a pretty powerful and succinct operation - would have probably taken a page of Java code.  Unless you're using Java 8.
+
+---
+
+## TopK in Spark - Method 1
+
+```scala
+val words = sparkContext.parallelize(Seq("Apple", "Bear", "Country", "Tahoe", "dork", "p", "e", "Apple", "Bear", "p", "Bear"))
+words: org.apache.spark.rdd.RDD[String] = ParallelCollectionRDD[0] at parallelize at <console>:29
+```
+```scala
+> words.map((_, 1)).groupByKey.
+|       map { case (word, counts) => (word, counts.sum) }.
+|       sortBy(_._2, false).
+|       take(5)
+res16: Array[(String, Int)] = Array((Bear,3), (p,2), (Apple,2), (Tahoe,1), (dork,1))
+```
+
+groupByKey: `("Apple", 1), ("Apple", 1)` -> `("Apple" -> Seq(1, 1))`
+
+Note: map outputs an RDD[(String, Int)].  groupByKey turns that into an RDD of (String, Seq[Int]).
+
+---
+
+## What's Actually Happening
+
+![](2014-11-Spark-TopK.png)
+
+---
+
+## What's Actually Happening
+
+- All the transformations (blue boxes) happen on cluster worker nodes
+- Chain of computations doesn't start until the `take` which causes top n sorted results to be delivered to the driver
+- There are two network shuffles - once during `groupByKey` and once during `sortBy`.
+
+---
+
+## TopK in Spark - Method 2
+
+Could we do any better?  Why yes.
+
+```scala
+> words.map((_, 1)).reduceByKey(_ + _).
+|       map { case (word, count) => (count, word) }.
+|       top(5)
+res1: Array[(Int, String)] = Array((3,Bear), (2,p), (2,Apple), (1,e), (1,dork))
+```
+
+`top` avoids the global sort by taking the top items from each node, then merging them at the driver.
+
+- This works only if there are no duplicate items across nodes
+- `reduceByKey` = `groupByKey` + `reduce`
 
 ---
 
@@ -205,12 +380,3 @@ What is really going on under the hood?
 
 ## Parallel ETL in Spark
 
----
-
-## Caching Data in Spark
-
----
-
-## Spark, Lineage, and Laziness
-
-What if I lose some data in memory?
