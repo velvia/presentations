@@ -24,7 +24,7 @@
 
 [data.edmonton.ca](http://data.edmonton.ca) [finances.worldbank.org](http://finances.worldbank.org) [data.cityofchicago.org](http://data.cityofchicago.org) [data.seattle.gov](http://data.seattle.gov) [data.oregon.gov](http://data.oregon.gov) [data.wa.gov](http://data.wa.gov) [www.metrochicagodata.org](http://www.metrochicagodata.org) [data.cityofboston.gov](http://data.cityofboston.gov) [info.samhsa.gov](http://info.samhsa.gov) [explore.data.gov](http://explore.data.gov) [data.cms.gov](http://data.cms.gov) [data.ok.gov](http://data.ok.gov) [data.nola.gov](http://data.nola.gov) [data.illinois.gov](http://data.illinois.gov) [data.colorado.gov](http://data.colorado.gov) [data.austintexas.gov](http://data.austintexas.gov) [data.undp.org](http://data.undp.org) [www.opendatanyc.com](http://www.opendatanyc.com) [data.mo.gov](http://data.mo.gov) [data.nfpa.org](http://data.nfpa.org) [data.raleighnc.gov](http://data.raleighnc.gov) [dati.lombardia.it](http://dati.lombardia.it) [data.montgomerycountymd.gov](http://data.montgomerycountymd.gov) [data.cityofnewyork.us](http://data.cityofnewyork.us) [data.acgov.org](http://data.acgov.org) [data.baltimorecity.gov](http://data.baltimorecity.gov) [data.energystar.gov](http://data.energystar.gov) [data.somervillema.gov](http://data.somervillema.gov) [data.maryland.gov](http://data.maryland.gov) [data.taxpayer.net](http://data.taxpayer.net) [bronx.lehman.cuny.edu](http://bronx.lehman.cuny.edu) [data.hawaii.gov](http://data.hawaii.gov) [data.sfgov.org](http://data.sfgov.org) [data.cityofmadison.com](http://data.cityofmadison.com) [healthmeasures.aspe.hhs.gov](http://healthmeasures.aspe.hhs.gov) [data.weatherfordtx.gov](http://data.weatherfordtx.gov) [www.data.act.gov.au](http://www.data.act.gov.au) [data.wellingtonfl.gov](http://data.wellingtonfl.gov) [data.honolulu.gov](http://data.honolulu.gov) [data.kcmo.org](http://data.kcmo.org) [data2020.abtassociates.com](http://data2020.abtassociates.com)
 
-Note: We lead the open data and open government movements and organize lots of civic hackathons.  We publish government data to make it easy for you to be an informed citizen.   Oh, and our entire backend is in Scala!!
+Note: We are the open data and open government company. We organize lots of civic hackathons.  We publish government data to make it easy for you to be an informed citizen.   Oh, and our entire backend is in Scala!!
 True story, last year I was sitting in your seat, had never heard of Socrata, a speaker came up and talked about how they were changing the world, and I said, I'm in!!
 
 ---
@@ -54,7 +54,7 @@ Note: You don't understand how awesome Scala's collections are until compared wi
 
 ---
 
-## Why Functional Collections are So Awesome
+## Why functional collections are so *awesome*
 
 - Makes working with data a joy
 - Easily go from sequential, to parallel, to distributed Hadoop/Spark computations
@@ -75,7 +75,7 @@ res0: List[Int] = List(2, 6, 10, 12, 14)
 
 ---
 
-## What is really going on when you do `myList.map`?
+## How `map` really works
 
 ```scala
   def map[B, That](f: A => B)(implicit bf: CanBuildFrom[Repr, B, That]): That = {
@@ -95,7 +95,7 @@ res0: List[Int] = List(2, 6, 10, 12, 14)
 
 ---
 
-## Why does it have to be sequential?
+## Must it be sequential?
 
 - Well, it doesn't.
 
@@ -127,14 +127,17 @@ Note: Speaking of divide and conquer.... this is not a concept we invented... in
 ## Intro to Apache ![](spark.jpg)
 
 - Horizontally scalable, in-memory queries
-- `map`, `filter`, `groupBy`, `sort` etc.
+- Familiar functional transformation APIs
 - SQL, machine learning, streaming, graph, R
 - Huge community and momentum
+    + Integration with Hadoop, S3, most datastores
 - REPL for easy interactive data analysis
+
+Note: Spark is leaving Hadoop in the dust.  REPL much easier than writing Hadoop MR jobs for development.
 
 ---
 
-## Doing a distributed map with Spark
+## Doing a distributed `map` with Spark
 
 ```scala
   myIntRdd.map(_ * 2).take(100)
@@ -156,7 +159,7 @@ What is really going on under the hood?
 
 ---
 
-## Under the Hood - `rdd.map()`
+## Under the hood - `rdd.map()`
 
 <center>
     ![](2014-11-Spark-RDD-XForm.png)
@@ -164,12 +167,36 @@ What is really going on under the hood?
 
 ---
 
-## Under the Hood - `rdd.take()`
+## Under the hood - `rdd.take()`
 
 - Spark Worker nodes are where computations are run and data is cached
 - Spark *driver* controls the program flow and executes steps like `map`, `take`
 - In this case `take` returns the first n items from the worker nodes to the driver
 - Map function and captured variables must be serializable over the network
+
+---
+
+## Overview of Spark APIs
+
+Within RDD Transformations:
+```scala
+> map, filter, groupBy, sample
+```
+
+Cross RDD Transformations:
+```scala
+> join, cartesian, coGroup
+```
+
+RDD Actions:
+```scala
+> reduce, count, collect, take, foreach
+```
+
+RDD Optimization / Misc:
+```scala
+> coalesce, repartition, pipe
+```
 
 ---
 
@@ -222,7 +249,7 @@ Note: even the `take(3)` is not enough to produce immediate results.
 
 ---
 
-## How Laziness is Achieved
+## How laziness is achieved
 
 ```scala
   override final def map[B, That](f: A => B)(implicit bf: CanBuildFrom[Stream[A], B, That]): That = {
@@ -240,11 +267,11 @@ Note: even the `take(3)` is not enough to produce immediate results.
 
 ---
 
-## Spark and Laziness
+## Spark and laziness
 
 ---
 
-## Spark and Laziness
+## Spark and laziness
 
 ```scala
 > sparkContext.parallelize((1 to 10)).map( x => x*i)
@@ -256,7 +283,7 @@ res6: org.apache.spark.rdd.RDD[Int] = MappedRDD[2] at map at <console>:33
 
 ---
 
-## Spark RDD Actions
+## Spark RDD actions
 
 To get a series of RDD transformations to actually execute, we need an RDD action function:
 
@@ -274,7 +301,7 @@ res9: Array[Int] = Array(2, 4, 6, 8, 10, 12, 14, 16, 18, 20)
 
 ---
 
-## Why Laziness is Important for Spark
+## Why laziness is important for Spark
 
 - Do as little work as possible - huge difference for big data
     + eg. `take(n)` only requires computing the first n items
@@ -285,25 +312,33 @@ res9: Array[Int] = Array(2, 4, 6, 8, 10, 12, 14, 16, 18, 20)
 
 ---
 
-## Caching Data in Spark
+## Caching data in Spark
 
 - `.cache()` causes Spark to save results of last transformation in worker's heap memory
 - Without cache, full list of transformations has to be run, including reading from input source
 - Like memoization
 - Order of magnitude speedup
-- Iterative processing on cached results - eg for linear regression - is a big part of Spark's claim to speed
+- Iterative processing on cached results - eg for linear regression - is a big part of Spark's speedup over Hadoop
 
 ---
 
-Demo?
+## Types of caching
+
+|  Type                   |                                  |
+| :---------------------- | -------------------------------- |
+| In worker node JVM heap | `MEMORY_ONLY`, `MEMORY_ONLY_SER` |
+| JVM heap and disk       | `MEMORY_AND_DISK`, `MEMORY_AND_DISK_SER`, `DISK_ONLY` |
+| Replicated              | `MEMORY_ONLY_2`, `MEMORY_AND_DISK_2` |
+| Tachyon / off-heap      | `OFF_HEAP` - resilient to worker crashes |
+| Spark SQL caching       | efficient columnar compressed in memory cache |
 
 ---
 
-## More fun - Grouping and Sorting
+## More fun - grouping and sorting
 
 ---
 
-## TopK Word Count in Scala
+## TopK word count in Scala
 
 ```scala
 scala> val words = Seq("Apple", "Bear", "Country", "Tahoe", "dork", "p", "e", "Apple", "Bear", "p", "Bear")
@@ -324,7 +359,7 @@ This is a pretty powerful and succinct operation - would have probably taken a p
 
 ---
 
-## TopK in Spark - Method 1
+## TopK in Spark - method 1
 
 ```scala
 val words = sparkContext.parallelize(Seq("Apple", "Bear", "Country", "Tahoe", "dork", "p", "e", "Apple", "Bear", "p", "Bear"))
@@ -344,13 +379,13 @@ Note: map outputs an RDD[(String, Int)].  groupByKey turns that into an RDD of (
 
 ---
 
-## What's Actually Happening
+## What's actually happening
 
 ![](2014-11-Spark-TopK.png)
 
 ---
 
-## What's Actually Happening
+## What's actually happening
 
 - All the transformations (blue boxes) happen on cluster worker nodes
 - Chain of computations doesn't start until the `take` which causes top n sorted results to be delivered to the driver
@@ -358,7 +393,7 @@ Note: map outputs an RDD[(String, Int)].  groupByKey turns that into an RDD of (
 
 ---
 
-## TopK in Spark - Method 2
+## TopK in Spark - method 2
 
 Could we do any better?  Why yes.
 
@@ -437,7 +472,7 @@ Code is virtually the same!!
 
 ---
 
-## Side Effects
+## Side effects
 
 Writing output to a datastore:
 
@@ -447,17 +482,14 @@ myRdd.foreach { data => myDB.write(data) }
 
 ---
 
-## Interesting Spark APIs
+## Spark tips
 
-- `.join`
-- `.cartesian`
-- `.coGroup`
-- `.sample`
-
-- Spark Streaming
-- MLLib
-- GraphX
-- Spark SQL
+- Use the REPL!  Excellent way to start, learn, explore.
+- Remember the laziness.  Know when to use actions vs transformations.
+- Limit the number of expensive grouping / sorting operations.
+- Explore the many subcomponents: Spark Streaming, MLLib, GraphX, Spark SQL
+- Understand caching
+- Check out the many integrations to make your lives easier: Spark-ElasticSearch, spark-cassandra-connector, etc. etc.
 
 ---
 
@@ -465,6 +497,6 @@ myRdd.foreach { data => myDB.write(data) }
 
 <center>
 If you can <span class="scalared">flatMap</span> it, then you can <span class="georgia-peach">Spark</span> it!
-
+<br>
 Go [try it](http://spark-project.org) today!
 </center>
