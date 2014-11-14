@@ -127,13 +127,13 @@ Note: Speaking of divide and conquer.... this is not a concept we invented... in
 ## Intro to Apache ![](spark.jpg)
 
 - Horizontally scalable, in-memory queries
-- Familiar functional transformation APIs
+- Concise functional Scala API (+ Java, Python, R, etc.)
 - SQL, machine learning, streaming, graph, R
 - Huge community and momentum
     + Integration with Hadoop, S3, most datastores
 - REPL for easy interactive data analysis
 
-Note: Spark is leaving Hadoop in the dust.  REPL much easier than writing Hadoop MR jobs for development.
+Note: Spark is leaving Hadoop in the dust, much like Scala vs Java.  REPL much easier than writing Hadoop MR jobs for development.  I could go on and on and on, but since this is a Scala conference and not a big data conference, let's get on with some code shall we?
 
 ---
 
@@ -156,6 +156,14 @@ What is really going on under the hood?
 - Each partition must fit entirely on one node
 
 ![](spark-rdd-concept.png)
+
+---
+
+## An RDD is typed like a Scala collection
+
+- Scala: `Seq[Int]`
+- Spark: `RDD[Int]`
+- Functions that read line input, like `sc.textFile()` return `RDD[String]`
 
 ---
 
@@ -239,16 +247,6 @@ Note: even the `take(3)` is not enough to produce immediate results.
 
 ---
 
-## Streams vs Iterators
-
-- Both `Stream` and `Iterator` are lazy
-- `Stream`s memoize their results - watch memory usage
-- `Iterator`s are mutable and can only be used once. `Stream`s are immutable and reusable.
-    + Compare `Stream.from(0).take(2).toList` to `Iterator.from(0).take(2).toList`
-- `Stream`s are easy to define functionally using the `#::` operator
-
----
-
 ## How laziness is achieved
 
 ```scala
@@ -264,6 +262,16 @@ Note: even the `take(3)` is not enough to produce immediate results.
 - We only evaluate the mapping function f on the first element, then return a `Stream` of the tail elements mapped using f
 - Key to laziness is that the tail is not evaluated
 - New stream has `map f` as part of its state
+
+---
+
+## Streams vs Iterators
+
+- Both `Stream` and `Iterator` are lazy
+- `Stream`s memoize their results - watch memory usage
+- `Iterator`s are mutable and can only be used once. `Stream`s are immutable and reusable.
+    + Compare `Stream.from(0).take(2).toList` to `Iterator.from(0).take(2).toList`
+- `Stream`s are easy to define functionally using the `#::` operator
 
 ---
 
@@ -317,7 +325,7 @@ res9: Array[Int] = Array(2, 4, 6, 8, 10, 12, 14, 16, 18, 20)
 - `.cache()` causes Spark to save results of last transformation in worker's heap memory
 - Without cache, full list of transformations has to be run, including reading from input source
 - Like memoization
-- Order of magnitude speedup
+- 1-2 orders of magnitude speedup
 - Iterative processing on cached results - eg for linear regression - is a big part of Spark's speedup over Hadoop
 
 ---
@@ -479,6 +487,32 @@ Writing output to a datastore:
 ```scala
 myRdd.foreach { data => myDB.write(data) }
 ```
+
+---
+
+## Spark Streaming
+
+![](spark-streaming.png)
+<!-- .element: class="lightimgback" -->
+
+---
+
+## Streaming word count
+
+```scala
+// Create a DStream that will connect to hostname:port, like localhost:9999
+val lines = ssc.socketTextStream("localhost", 9999)
+
+// Split each line into words
+val words = lines.flatMap(_.split(" "))
+
+// Count each word in each batch
+val pairs = words.map(word => (word, 1))
+val wordCounts = pairs.reduceByKey(_ + _)
+```
+
+- Almost exact same code as batch word count
+- Horizontally scalable stream processing
 
 ---
 
