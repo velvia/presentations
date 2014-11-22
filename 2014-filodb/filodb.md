@@ -57,7 +57,9 @@ Apache Cassandra.
 ## It's like Parquet on Cassandra
 
 - You can actually write to, update, replace data elements easily - works well with at-least-once data pipelines
-- All the advantages of Cassandra over HDFS
+- Parquet won't let you add, delete, replace columns easily, or give you versioning
+- All the advantages of Cassandra over HDFS: simplicity, HA, cross-datacenter replication
+- Scales much better for large numbers of versions or datasets
 - OTOH, with versioning, achieving data locality is much harder
 
 ---
@@ -88,7 +90,6 @@ This will probably change a lot.
 ```sql
 CREATE TABLE datasets (
     name text,
-    num_shards int,
     properties map<text, text>,
     PRIMARY KEY (name)
 );
@@ -116,18 +117,28 @@ Combination of version and column_name uniquely identifies a column.
 
 --
 
+## Versions table
+
+Easily see all the relevant columns for a given version.
+
+--
+
 ## Shards table
 
-This is for tracking all the subshards.
+This is for tracking all the shards for a given version.
 
 ```sql
 CREATE TABLE shards (
     dataset text,
+    version int,
     shard int,
-    subshards list<int>,
-    PRIMARY KEY (dataset, shard)
+    column_count int,
+    row_count int
+    PRIMARY KEY ((dataset, version), shard)
 );
 ```
+
+To find out latest shard number, just select shard order desc limit 1;
 
 --
 
@@ -136,13 +147,12 @@ CREATE TABLE shards (
 ```sql
 CREATE TABLE data (
     dataset text,
-    shard int,
-    subshard int,
     version int,
+    shard int,
     column_name text,
     row_id int,
     data blob
-    PRIMARY KEY ((dataset, shard, subshard, version), column_name, row_id)
+    PRIMARY KEY ((dataset, version, shard), column_name, row_id)
 );
 ```
 
@@ -150,23 +160,18 @@ The above places all columns for a subshard for a given version on the same phys
 
 ---
 
-## Sharding
+## Versioning
 
-* **shard** - Managed by users, allows for parallel / independent writers, or manual sharding like for Geo datasets
-* **subshard** - Managed by FiloDB, is for partitioning data within a single shard
-    - Although .... maybe it could be used by users too, if they really know what they're doing
+- Query version n:  really accumulate all the state from version 0 to version n
+- What if you could select a range of versions (n1, n2) to query?
+    + Might have incomplete data.  It might contain only newly added columns for example, or newly added rows.
+    + Over time, a range of old versions might get compacted, and rewritten.
 
 ---
 
 ## Version Control
 
 Writers must provide their own external synchronization mechanism to make sure they are all writing the same version.
-
----
-
-## Common Operations - DDL
-
-* Change column type - create a new version with the same column name, do Spark job to do type conversion
 
 ---
 
@@ -182,3 +187,62 @@ Have a small core and layer functionality on top.  Keep the core extremely simpl
 | Spark         | All queries beyond basic data export; dataset joins    |
 | Application   | Decides on versions, reads/writes data. |
 <!-- .element: class="fullwidth" -->
+
+---
+
+## Sharding
+
+Because one Cassandra physical row might not be enough for larger datasets.
+
+* Single writer - increment shard # when one fills up one physical row
+* Multiple writers - have a singleton (Akka cluster?) provision shards.  New one whenever any writer fills up one row.  Shards from multiple writers will be interleaved.
+* Custom - for example, a geo Z-curve based sharding.  The shard numbers might not be incremental at all, but based on the higher order bits of the z-curve.
+
+---
+
+## Detailed Use Cases / WorkFlow
+
+--
+
+## Initial Ingress
+
+- (Core API) create a new dataset
+- (Core API) define columns for initial version
+- (Bulk Ingester) start ingesting rows of data
+    + New shard ID assignment
+    + Translate rows of data into individual columns of data
+    + Use lower level Core API to write out columns
+    + Know when a new shard is needed.  Initial version - fixed # of rows per shard?
+
+--
+
+## Append new rows
+
+- (Bulk Ingester) restore state of current shards / look up latest shard ID
+- (Core API) create a new version if desired to write new rows into
+- (Bulk Ingester) ingest more rows of data into existing or new shard
+
+Hm, what about state of how many rows have been written to current shard?
+
+--
+
+## Compute a new column from existing column
+
+--
+
+## Export all rows
+
+- There is no concept of an offset.
+- Paging can be done using a token which translates to a `(version, shard, row_id)` or similar.
+
+--
+
+## Deleting a column
+
+--
+
+## DDL Operations?
+
+* Change column type - This breaks down as follows:
+    - (Core API) Create new version with same column name but different type
+    - (Spark) Use a Spark job to read from v1/columnA, do type conversion, and write v2/columnA
