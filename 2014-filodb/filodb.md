@@ -35,14 +35,13 @@ Rich sweet layers of distributed, versioned database goodness
 
 ## Distributed
 
-Apache Cassandra.
+Apache Cassandra.  Scale out with no SPOF.  Cross-datacenter replication.
 
 ---
 
 ## Versioned
 
-- User controls what version to write to (or just say latest)
-- queries will merge different layers / versions
+Incrementally add a column or a few rows as a new version.  Easily control what versions to query.  Roll back changes inexpensively.
 
 ---
 
@@ -76,6 +75,14 @@ Apache Cassandra.
 
 - Pinpoint reads and writes
 - OLTP
+
+---
+
+## FiloDB Concepts
+
+- **Dataset**: a table
+- **Version**: each version of a dataset has at least one column and one row.  Versions stack on top of each other and are incremental.
+- **Shard**: contains one set of rows for all the columns in a version.  Divides and distributes the dataset.
 
 ---
 
@@ -156,7 +163,50 @@ CREATE TABLE data (
 );
 ```
 
-The above places all columns for a subshard for a given version on the same physical row, but data for a column is still grouped together, which is similar to Parquet.  An alternative would be to have each version/column combo on separate physical rows.  Tradeoff probably depends on the exact dataset.
+- All the columns for a given shard are colocated together
+- Works well for mostly-append data with few updates; data with many columns
+- Works poorly when there are tons of updates on the same rows
+
+--
+
+## Data Table - Alternative Scheme
+
+```sql
+    PRIMARY KEY ((dataset, column_name, shard), row_id, version)
+);
+```
+
+- All the versions are colocated, making merging trivial
+- Works well for frequently updated data with not too many columns read at once
+- Would work poorly for data with many columns;
+
+---
+
+## Example data: mostly appends
+
+| Version | Shard |    |    |     |     |
+| :------ | :---- | -- | -- | --- | --- |
+|  1      |  1    | Col1_R1 | Col1_R2 | Col2_R1 | Col2_R2 |
+|  1      |  2    | Col1_R1 | Col1_R2 | Col2_R1 | Col2_R2 |
+|  2      |  2    | Col1_R3 | Col1_R4 | Col2_R3 | Col2_R4 |
+|  3      |  3    | Col1_R1 | Col1_R2 | Col2_R1 | Col2_R2 |
+<!-- .element: class="fullwidth" -->
+
+Once the versions and shards are known, reading becomes pretty easy.
+
+---
+
+## Example Data: mostly updates
+
+| Version | Shard |    |    |     |     |
+| :------ | :---- | -- | -- | --- | --- |
+|  1      |  1    | Col1_R1 | Col1_R2 | Col2_R1 | Col2_R2 |
+|  2      |  1    |         | Col1_R2' |    |  |
+|  3      |  1    |         | Col1_R2'' |    |  |
+|  4      |  1    |         | Col1_R2''' |    |  |
+
+Reading Col1_R1 is easy.
+Reading Col1_R2 is not.  We have to read all four versions to collapse into the latest version.
 
 ---
 
@@ -227,6 +277,11 @@ Hm, what about state of how many rows have been written to current shard?
 --
 
 ## Compute a new column from existing column
+
+- Find all the shards for the desired version range
+- For each shard, merge all versions together, read into Spark
+- Compute new column
+- Bulk ingester write new column in
 
 --
 
