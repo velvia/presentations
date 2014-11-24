@@ -24,11 +24,11 @@ Rich sweet layers of distributed, versioned database goodness
 ## Use Cases
 
 - I have many tables of various sizes, including ones too big for traditional RDBMS 
-- I want easy sharding, replication, and HA, including cross-datacenter replication
+- I want an efficient schema designed for OLAP queries
 - I want to version my changes and query on versions.  
     + Or, I want to preview new changes without making them public
-- I want an efficient schema designed for OLAP queries
-- I want to easily add columns to my data
+- I want easy sharding, replication, and HA, including cross-datacenter replication
+- I want to easily and efficiently add columns to my data
 - I want something designed to work with at-least-once streaming systems
 
 ---
@@ -47,9 +47,18 @@ Incrementally add a column or a few rows as a new version.  Easily control what 
 
 ## Columnar
 
-- Columns are stored together
+- Values from the same column are stored together
 - Retrieve select columns and minimize I/O for OLAP queries
 - Add a new column without having to copy the whole table
+
+---
+
+## Wait, but I thought Cassandra was columnar?
+
+- Cassandra/CQL groups values from each logical row together.  See [this explanation](http://www.slideshare.net/DataStax/understanding-how-cql3-maps-to-cassandras-internal-data-structure).
+    + Reading a subset of columns still incurs high I/O cost
+- FiloDB stores values from the same column together on disk, minimizing I/O for OLAP queries
+- Also, FiloDB does not require the data to have a primary key.
 
 ---
 
@@ -138,6 +147,7 @@ This is for tracking all the shards for a given version.
 CREATE TABLE shards (
     dataset text,
     version int,
+    num_shards int STATIC,
     shard int,
     column_count int,
     row_count int
