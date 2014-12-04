@@ -43,6 +43,8 @@ Apache Cassandra.  Scale out with no SPOF.  Cross-datacenter replication.
 
 Incrementally add a column or a few rows as a new version.  Easily control what versions to query.  Roll back changes inexpensively.
 
+Generate incremental views on new versions**
+
 ---
 
 ## Columnar
@@ -53,15 +55,6 @@ Incrementally add a column or a few rows as a new version.  Easily control what 
 
 ---
 
-## Wait, but I thought Cassandra was columnar?
-
-- Cassandra/CQL groups values from each logical row together.  See [this explanation](http://www.slideshare.net/DataStax/understanding-how-cql3-maps-to-cassandras-internal-data-structure).
-    + Reading a subset of columns still incurs high I/O cost
-- FiloDB stores values from the same column together on disk, minimizing I/O for OLAP queries
-- Also, FiloDB does not require the data to have a primary key.
-
----
-
 ## It's like Parquet on Cassandra
 
 - You can actually write to, update, replace data elements easily - works well with at-least-once data pipelines
@@ -69,6 +62,16 @@ Incrementally add a column or a few rows as a new version.  Easily control what 
 - All the advantages of Cassandra over HDFS: simplicity, HA, cross-datacenter replication
 - Scales much better for large numbers of versions or datasets
 - OTOH, with versioning, achieving data locality is much harder
+
+---
+
+## Wait, but I thought Cassandra was columnar?
+
+- Cassandra/CQL groups values from each logical row together.  See [this explanation](http://www.slideshare.net/DataStax/understanding-how-cql3-maps-to-cassandras-internal-data-structure).
+    + Reading a subset of columns still incurs high I/O cost
+- FiloDB stores values from the same column together on disk, minimizing I/O for OLAP queries
+- FiloDB is designed for a virtually unlimited number of tables.  Cassandra will OOM with lots of CFs.
+- Also, FiloDB does not require the data to have a primary key.
 
 ---
 
@@ -89,9 +92,19 @@ Incrementally add a column or a few rows as a new version.  Easily control what 
 
 ## FiloDB Concepts
 
-- **Dataset**: a table
-- **Version**: each version of a dataset has at least one column and one row.  Versions stack on top of each other and are incremental.
+- **Dataset**: a table with a schema
+- **Version**: each incremental set of changes (appends / updates / deletes / new column)
 - **Shard**: contains one set of rows for all the columns in a version.  Divides and distributes the dataset.
+
+---
+
+## Assumptions and Tradeoffs
+
+- Only one writer per shard.  Central shard assignment.
+    + Keep local state per writer, such as row-id
+    + Coordination required for error recovery, writer shard assignment
+- Each version is the unit of atomic change.  Changes within a version may not be atomic.
+- Versions can be used for change isolation and propagation
 
 ---
 
@@ -123,7 +136,8 @@ CREATE TABLE columns (
     version int,
     column_name text,
     type text,
-    batch_size text,
+    deleted boolean,
+    batch_size int,
     properties map<text, text>,
     PRIMARY KEY (dataset_name, version, column_name)
 );
@@ -133,25 +147,17 @@ Combination of version and column_name uniquely identifies a column.
 
 --
 
-## Versions table
-
-Easily see all the relevant columns for a given version.
-
---
-
 ## Shards table
 
-This is for tracking all the shards for a given version.
+This is for tracking all the shards for a given dataset.
 
 ```sql
 CREATE TABLE shards (
     dataset text,
-    version int,
     num_shards int STATIC,
     shard int,
-    column_count int,
-    row_count int
-    PRIMARY KEY ((dataset, version), shard)
+    versions list<int>,
+    PRIMARY KEY (dataset, shard)
 );
 ```
 
