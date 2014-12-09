@@ -75,6 +75,14 @@ Generate incremental views on new versions**
 
 ---
 
+## The New Scalable Data Platform
+
+1.  Store your data in a scalable data store (Cassandra)
+2.  Use a flexible distributed computation layer (Spark)
+3.  Visualize and profit!
+
+---
+
 ## What FiloDB is Optimized For
 
 - Bulk appends and updates
