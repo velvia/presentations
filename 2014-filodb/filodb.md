@@ -274,6 +274,16 @@ Because one Cassandra physical row might not be enough for larger datasets.
 
 ---
 
+## Spark Integration
+
+* Use 1.2 Spark SQL data source API to selectively read only necessary columns
+* Should be easy to cache columns in Tachyon using the Table support feature
+* Implement custom `FiloColumnarRelation` that can efficiently scan ByteBuffers read from Cassandra.
+    - Like `spark.sql.columnar.InMemoryRelation` but no need to recompress from source!  Should be much faster
+    - Would be really interesting to compare with Parquet
+
+---
+
 ## Detailed Use Cases / WorkFlow
 
 --
