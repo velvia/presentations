@@ -101,7 +101,7 @@ Generate incremental views on new versions**
 ## FiloDB Concepts
 
 - **Dataset**: a table with a schema
-- **Version**: each incremental set of changes (appends / updates / deletes / new column)
+- **Version**: each "diff" or incremental set of changes (appends / updates / deletes / new column)
 - **Shard**: contains one set of rows for all the columns in a version.  Divides and distributes the dataset.
 
 ---
@@ -246,6 +246,15 @@ Reading Col1_R2 is not.  We have to read all four versions to collapse into the 
 ## Version Control
 
 Writers must provide their own external synchronization mechanism to make sure they are all writing the same version.
+
+---
+
+## Versioning and Cassandra
+
+* In the future, we could potentially use stored procedures (Cassandra 3.0) for
+    - efficient reading of relevant versions (server side skipping of data)
+    - help with compaction of versions
+* HBase would be easier actually due to the built in versioning API
 
 ---
 
