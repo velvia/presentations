@@ -113,6 +113,7 @@ Generate incremental views on new versions**
     + Coordination required for error recovery, writer shard assignment
 - Each version is the unit of atomic change.  Changes within a version may not be atomic.
 - Versions can be used for change isolation and propagation
+    + No need for explicit transaction log.  Just read out data from a version
 
 ---
 
@@ -290,6 +291,15 @@ Because one Cassandra physical row might not be enough for larger datasets.
 * Implement custom `FiloColumnarRelation` that can efficiently scan ByteBuffers read from Cassandra.
     - Like `spark.sql.columnar.InMemoryRelation` but no need to recompress from source!  Should be much faster
     - Would be really interesting to compare with Parquet
+
+---
+
+## Primary keys
+
+- Needed in some cases to look up a row by a user-defined key
+- Recommend: optimize for bulk ingest/read, store primary key as just another column
+- Add an inverted index mapping primary key to `(version, shard, row_id)`
+    + Consider using Lucene integrations like StratioBD, Stargate (would need some customizations to work with this schema)
 
 ---
 
