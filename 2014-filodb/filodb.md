@@ -55,6 +55,12 @@ Generate incremental views on new versions**
 
 ---
 
+## Think of <span class="golden">FiloDB</span> as
+## Git + Parquet
+## meets Cassandra and Spark
+
+---
+
 ## It's like Parquet on Cassandra
 
 - You can actually write to, update, replace data elements easily - works well with at-least-once data pipelines
@@ -114,6 +120,12 @@ Generate incremental views on new versions**
 - Each version is the unit of atomic change.  Changes within a version may not be atomic.
 - Versions can be used for change isolation and propagation
     + No need for explicit transaction log.  Just read out data from a version
+
+---
+
+## Kafka Sharding Model
+
+
 
 ---
 

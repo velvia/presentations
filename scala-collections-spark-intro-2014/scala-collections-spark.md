@@ -339,6 +339,7 @@ res9: Array[Int] = Array(2, 4, 6, 8, 10, 12, 14, 16, 18, 20)
 | Replicated              | `MEMORY_ONLY_2`, `MEMORY_AND_DISK_2` |
 | Tachyon / off-heap      | `OFF_HEAP` - resilient to worker crashes |
 | Spark SQL caching       | efficient columnar compressed in memory cache |
+<!-- .element: class="fullwidth" -->
 
 ---
 
