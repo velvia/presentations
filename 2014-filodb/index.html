@@ -37,8 +37,19 @@
       </div>
     </div>
 
+    <div class="graph1">
+      <div class="mermaid" id="meme">
+        graph LR;
+                A[Hard edge] -->|Link text| B(Round edge)
+                B --> C{Decision}
+                C -->|One| D[Result one]
+                C -->|Two| E[Result two]
+      </div>
+    </div>
+
     <script src="../reveal/lib/js/head.min.js"></script>
     <script src="../reveal/js/reveal.js"></script>
+    <script src="../mermaid.full.min.js"></script>
 
     <script>
 

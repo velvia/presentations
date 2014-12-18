@@ -123,9 +123,13 @@ Generate incremental views on new versions**
 
 ---
 
-## Kafka Sharding Model
+## Kafka Inspired
 
+- Explicitly control sharding for parallelism
+- Each shard reader controls their own pointer.  Server is simple and relatively stateless
+- Use of zero-copy, zero-deserialisation techniques for fast queries
 
+TODO: insert a Mermaid diagram here.
 
 ---
 
