@@ -57,13 +57,14 @@ Generate incremental views on new versions**
 
 ## Use Cases
 
-- I have many tables of various sizes, including ones too big for traditional RDBMS 
-- I want an efficient schema designed for OLAP queries / bulk reads and writes
+- I want really fast Spark SQL queries on Cassandra
+- I love Parquet, but HDFS is a pain to operate/setup
+- I want more flexibility than HDFS/Parquet (easily add columns, rows)
+- I want at-least-once/exactly once storage of streaming data
 - I want to version my changes and query on versions.  
     + Or, I want to preview new changes without making them public
-- I want easy sharding, replication, and HA, including cross-datacenter replication
-- I want to easily and efficiently add columns to my data
-- I want something designed to work with at-least-once streaming systems
+- I want an awesome HA and replication story
+- I have many tables of various sizes, including ones too big for traditional RDBMS 
 
 ---
 
