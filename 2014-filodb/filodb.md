@@ -21,18 +21,6 @@ Rich sweet layers of distributed, versioned database goodness
 
 ---
 
-## Use Cases
-
-- I have many tables of various sizes, including ones too big for traditional RDBMS 
-- I want an efficient schema designed for OLAP queries
-- I want to version my changes and query on versions.  
-    + Or, I want to preview new changes without making them public
-- I want easy sharding, replication, and HA, including cross-datacenter replication
-- I want to easily and efficiently add columns to my data
-- I want something designed to work with at-least-once streaming systems
-
----
-
 ## Distributed
 
 Apache Cassandra.  Scale out with no SPOF.  Cross-datacenter replication.
@@ -52,6 +40,45 @@ Generate incremental views on new versions**
 - Values from the same column are stored together
 - Retrieve select columns and minimize I/O for OLAP queries
 - Add a new column without having to copy the whole table
+- Vectorization and lazy/zero serialization for extreme efficiency
+
+---
+
+## Tight Spark Integration
+
+* Read tables into Spark SQL, process, join, write back out as new tables or versions
+* Use 1.2 Spark SQL data source API to selectively read only necessary columns
+* Should be easy to cache columns in Tachyon using the Table support feature
+* Implement custom `FiloColumnarRelation` that can efficiently scan ByteBuffers read from Cassandra.
+    - Like `spark.sql.columnar.InMemoryRelation` but no need to recompress from source!  Should be much faster
+    - Would be really interesting to compare with Parquet
+
+---
+
+## Use Cases
+
+- I have many tables of various sizes, including ones too big for traditional RDBMS 
+- I want an efficient schema designed for OLAP queries / bulk reads and writes
+- I want to version my changes and query on versions.  
+    + Or, I want to preview new changes without making them public
+- I want easy sharding, replication, and HA, including cross-datacenter replication
+- I want to easily and efficiently add columns to my data
+- I want something designed to work with at-least-once streaming systems
+
+---
+
+## What FiloDB is Optimized For
+
+- Bulk appends and updates
+- OLAP / Data warehousing queries (full table scans)
+- Generating views
+
+---
+
+## What FiloDB is Not Optimized For
+
+- Pinpoint reads and writes
+- OLTP
 
 ---
 
@@ -68,6 +95,7 @@ Generate incremental views on new versions**
 - All the advantages of Cassandra over HDFS: simplicity, HA, cross-datacenter replication
 - Scales much better for large numbers of versions or datasets
 - OTOH, with versioning, achieving data locality is much harder
+- For now, no nested structures (possible in future)
 
 ---
 
@@ -76,8 +104,8 @@ Generate incremental views on new versions**
 - Cassandra/CQL groups values from each logical row together.  See [this explanation](http://www.slideshare.net/DataStax/understanding-how-cql3-maps-to-cassandras-internal-data-structure).
     + Reading a subset of columns still incurs high I/O cost
 - FiloDB stores values from the same column together on disk, minimizing I/O for OLAP queries
+- Initial studies show columnar layout is much more compact and 10-100x more efficient on reads
 - FiloDB is designed for a virtually unlimited number of tables.  Cassandra will OOM with lots of CFs.
-- Also, FiloDB does not require the data to have a primary key.
 
 ---
 
@@ -86,21 +114,6 @@ Generate incremental views on new versions**
 1.  Store your data in a scalable data store (Cassandra)
 2.  Use a flexible distributed computation layer (Spark)
 3.  Visualize and profit!
-
----
-
-## What FiloDB is Optimized For
-
-- Bulk appends and updates
-- OLAP / Data warehousing queries (full table scans)
-- Generating views
-
----
-
-## What FiloDB is Not Optimized For
-
-- Pinpoint reads and writes
-- OLTP
 
 ---
 
@@ -300,22 +313,53 @@ Because one Cassandra physical row might not be enough for larger datasets.
 
 ---
 
-## Spark Integration
-
-* Use 1.2 Spark SQL data source API to selectively read only necessary columns
-* Should be easy to cache columns in Tachyon using the Table support feature
-* Implement custom `FiloColumnarRelation` that can efficiently scan ByteBuffers read from Cassandra.
-    - Like `spark.sql.columnar.InMemoryRelation` but no need to recompress from source!  Should be much faster
-    - Would be really interesting to compare with Parquet
-
----
-
 ## Primary keys
 
 - Needed in some cases to look up a row by a user-defined key
 - Recommend: optimize for bulk ingest/read, store primary key as just another column
 - Add an inverted index mapping primary key to `(version, shard, row_id)`
     + Consider using Lucene integrations like StratioBD, Stargate (would need some customizations to work with this schema)
+
+---
+
+## Deep Dive - Ingestion
+
+--
+
+## Ingestion Goals
+
+1. Don't lose any data!  Idempotent at-least-once
+2. Backpressure.  Ingest only when ready.
+3. Support distributed bulk ingest
+4. Efficient ingest and efficient retries
+5. Should work for streaming data, including error recovery
+
+--
+
+## Ingestion API
+
+- User divides dataset into independent parts or streams, sequences input rows
+- FiloDB should take care of details like sharding, row IDs
+- Regular acks of incoming stream
+
+--
+
+## Typical Ingest Message Flow
+
+TODO: add websequencediagram of typical ingest workflow
+
+--
+
+## Don't Lose Any Data
+
+- Increasing sequence numbers Kafka-style for each row/chunk of ingress stream
+- Ack latest committed sequence number
+    + Works for any data layout
+    + Scalable, works when grouping rows into columnar layout
+- Ingester logs state changes with every chunk
+- On error:
+    + Rewind to last committed sequence number (may rely on client for replay)
+    + Ingester uses logged events to reconstruct prev state
 
 ---
 
@@ -342,6 +386,10 @@ Because one Cassandra physical row might not be enough for larger datasets.
 - (Bulk Ingester) ingest more rows of data into existing or new shard
 
 Hm, what about state of how many rows have been written to current shard?
+
+--
+
+## Replace a Row
 
 --
 
