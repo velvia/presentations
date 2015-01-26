@@ -47,6 +47,7 @@ Generate incremental views on new versions**
 ## Tight Spark Integration
 
 * Read tables into Spark SQL, process, join, write back out as new tables or versions
+* Easily integrate FiloDB with other sources - JSON, Avro, Parquet, Hive tables, etc.
 * Use 1.2 Spark SQL data source API to selectively read only necessary columns
 * Should be easy to cache columns in Tachyon using the Table support feature
 * Implement custom `FiloColumnarRelation` that can efficiently scan ByteBuffers read from Cassandra.
@@ -58,11 +59,11 @@ Generate incremental views on new versions**
 ## Use Cases
 
 - I want really fast Spark SQL queries on Cassandra
-- I love Parquet, but HDFS is a pain to operate/setup
-- I want more flexibility than HDFS/Parquet (easily add columns, rows)
-- I want at-least-once/exactly once storage of streaming data
+- I love Parquet, but HDFS is a pain, and/or I need more flexibility
+    + Idempotent writes, easily add new columns and rows
 - I want to version my changes and query on versions.  
-    + Or, I want to preview new changes without making them public
+- I want a way to easily do incremental data analysis
+- I want at-least-once/exactly once ingestion from Kafka / streaming sources
 - I want an awesome HA and replication story
 - I have many tables of various sizes, including ones too big for traditional RDBMS 
 
@@ -89,17 +90,6 @@ Generate incremental views on new versions**
 
 ---
 
-## It's like Parquet on Cassandra
-
-- You can actually write to, update, replace data elements easily - works well with at-least-once data pipelines
-- Parquet won't let you add, delete, replace columns easily, or give you versioning
-- All the advantages of Cassandra over HDFS: simplicity, HA, cross-datacenter replication
-- Scales much better for large numbers of versions or datasets
-- OTOH, with versioning, achieving data locality is much harder
-- For now, no nested structures (possible in future)
-
----
-
 ## Wait, but I thought Cassandra was columnar?
 
 - Cassandra/CQL groups values from each logical row together.  See [this explanation](http://www.slideshare.net/DataStax/understanding-how-cql3-maps-to-cassandras-internal-data-structure).
@@ -110,40 +100,48 @@ Generate incremental views on new versions**
 
 ---
 
-## The New Scalable Data Platform
-
-1.  Store your data in a scalable data store (Cassandra)
-2.  Use a flexible distributed computation layer (Spark)
-3.  Visualize and profit!
-
----
-
 ## FiloDB Concepts
 
 - **Dataset**: a table with a schema
 - **Version**: each "diff" or incremental set of changes (appends / updates / deletes / new column)
-- **Shard**: contains one set of rows for all the columns in a version.  Divides and distributes the dataset.
+- **Partition**: contains one set of rows for all the columns in a version.  Divides and distributes the dataset.
 
 ---
 
 ## Assumptions and Tradeoffs
 
-- Only one writer per shard.  Central shard assignment.
-    + Keep local state per writer, such as row-id
-    + Coordination required for error recovery, writer shard assignment
+- Only one writer per partition.  Partitions are independent, like Kafka.
+    + User decides how to partition data
+    + Partitions can have varying size, rows numbered from 0 to N-1
+    + Groups of rows converted into column chunks
+    + A version/partition/row# uniquely identifies data within a dataset
 - Each version is the unit of atomic change.  Changes within a version may not be atomic.
 - Versions can be used for change isolation and propagation
     + No need for explicit transaction log.  Just read out data from a version
 
 ---
 
-## Kafka Inspired
+## From Rows to Columns
 
-- Explicitly control sharding for parallelism
-- Each shard reader controls their own pointer.  Server is simple and relatively stateless
-- Use of zero-copy, zero-deserialisation techniques for fast queries
+(TODO: Insert a diagram converting rows into column chunks, illustrating how within each partition data is addressed by row #)
 
-TODO: insert a Mermaid diagram here.
+---
+
+## Detailed Use Case: Incremental Traffic Analysis
+
+(Or talk about the incremental data analysis possibilities)
+
+---
+
+## Detailed Use Case: Ad-Hoc Analysis of Streaming Data
+
+---
+
+## Performance Studies:
+
+- Regular Cassandra table reads vs FiloDB reads
+- Spark Cass Connector vs FiloDB Spark SQL
+    + include Tachyon/caching study
 
 ---
 
@@ -184,23 +182,47 @@ CREATE TABLE columns (
 
 Combination of version and column_name uniquely identifies a column.
 
+Dataset_name being partition key allows traversal of versions and columns.
+
 --
 
-## Shards table
+## Partitions table
 
-This is for tracking all the shards for a given dataset.
+This is for tracking all the partitions for a given dataset.  
 
 ```sql
-CREATE TABLE shards (
+CREATE TABLE partitions (
     dataset text,
-    num_shards int STATIC,
-    shard int,
-    versions list<int>,
-    PRIMARY KEY (dataset, shard)
+    partition text,
+    lastRowId int,
+    shardingStrategy text,
+    firstRowId list<int>,
+    firstVersion list<int>,
+    versionBitMap list<blob>,
+    PRIMARY KEY (dataset, partition)
 );
 ```
 
-To find out latest shard number, just select shard order desc limit 1;
+Partitions are internally sharded.  Different sharding strategies are available, but it is not a user-facing concern.  "bySize:<sizeInMB>" "byFixedNumRows:<numRows>"
+
+NOTE: lastRowId will be < 0 if the partition has no committed data yet.
+
+--
+
+## Partition-Lock table
+
+Each partition has a lock to ensure only one writer per partition.  Cassandra's write-if-not-exists and LWT functionality along with a TTL is used.
+
+```sql
+CREATE TABLE partition-lock (
+    dataset text,
+    partition text,
+    owner text,
+    PRIMARY KEY ((dataset, partition))
+);
+```
+
+The owner string should be globally unique, perhaps IP address and UUID.
 
 --
 
@@ -210,15 +232,17 @@ To find out latest shard number, just select shard order desc limit 1;
 CREATE TABLE data (
     dataset text,
     version int,
-    shard int,
+    partition text,
+    firstRowId int,
     column_name text,
     row_id int,
     data blob
-    PRIMARY KEY ((dataset, version, shard), column_name, row_id)
+    PRIMARY KEY ((dataset, version, partition, firstRowId), column_name, row_id)
 );
 ```
 
-- All the columns for a given shard are colocated together
+- A single partition shard consists of (partition, firstRowId)
+- All the columns for a given shard of a partition are colocated together
 - Works well for mostly-append data with few updates; data with many columns
 - Works poorly when there are tons of updates on the same rows
 
@@ -239,29 +263,80 @@ CREATE TABLE data (
 
 ## Example data: mostly appends
 
-| Version | Shard |    |    |     |     |
-| :------ | :---- | -- | -- | --- | --- |
-|  1      |  1    | Col1_R1 | Col1_R2 | Col2_R1 | Col2_R2 |
-|  1      |  2    | Col1_R1 | Col1_R2 | Col2_R1 | Col2_R2 |
-|  2      |  2    | Col1_R3 | Col1_R4 | Col2_R3 | Col2_R4 |
-|  3      |  3    | Col1_R1 | Col1_R2 | Col2_R1 | Col2_R2 |
+Chunk size of 100 rows
+
+| Version | firstRow |    |    |     |     |
+| :------ | :------- | -- | -- | --- | --- |
+|  1      |  0       | Col1_R0 | Col1_R100 | Col2_R0 | Col2_R100 |
+|  1      |  200     | Col1_R200 | Col1_R300 | Col2_R200 | Col2_R300 |
+|  2      |  400     | Col1_R400 | Col1_R500 | Col2_R400 | Col2_R500 |
+|  3      |  600     | Col1_R600 | Col1_R700 | Col2_R600 | Col2_R700 |
 <!-- .element: class="fullwidth" -->
 
-Once the versions and shards are known, reading becomes pretty easy.
+* Knowing the version and row ID allows one to find the row easily (though one has to get the partition to firstRow mapping)
+* Row ID of each chunk is the first row number of the chunk
 
 ---
 
 ## Example Data: mostly updates
 
-| Version | Shard |    |    |     |     |
-| :------ | :---- | -- | -- | --- | --- |
-|  1      |  1    | Col1_R1 | Col1_R2 | Col2_R1 | Col2_R2 |
-|  2      |  1    |         | Col1_R2' |    |  |
-|  3      |  1    |         | Col1_R2'' |    |  |
-|  4      |  1    |         | Col1_R2''' |    |  |
+Chunk size of 100 rows
 
-Reading Col1_R1 is easy.
-Reading Col1_R2 is not.  We have to read all four versions to collapse into the latest version.
+| Version | firstRow |    |    |     |     |
+| :------ | :------- | -- | -- | --- | --- |
+|  1      |  0       | Col1_R0 | Col1_R100 | Col2_R0 | Col2_R100 |
+|  2      |  0       |         | Col1_R100' |    |  |
+|  3      |  0       |         | Col1_R100'' |    |  |
+|  4      |  0       |         | Col1_R100''' |    |  |
+
+Reading Col1_R0 is easy.
+Reading Col1_R100 is not.  We have to read all four versions to collapse into the latest version.
+
+Also note that the chunk size determines the minimum size of data that is replaced.  Replacing one row within those 100 rows represents a read-modify-write cycle.
+
+---
+
+## Deep Dive - Ingestion
+
+--
+
+## Ingestion Goals
+
+1. Don't lose any data!  Idempotent at-least-once
+2. Backpressure.  Ingest only when ready.
+3. Support distributed bulk ingest
+4. Efficient ingest and efficient retries
+5. Should work for streaming data, including error recovery
+
+--
+
+## Ingestion API
+
+- User divides dataset into independent partitions, sequences input rows
+- FiloDB internally shards partitions and tracks row IDs
+- Row IDs numbered from 0 upwards, corresponds to partition input stream
+- Row ID of each column chunk is the first row # of each chunk
+- Append-only pattern: write to shard with highest starting row ID
+- Regular acks of incoming stream
+
+--
+
+## Typical Ingest Message Flow
+
+![](filodb_ingestion_flow.png)
+
+--
+
+## Don't Lose Any Data
+
+- Increasing sequence numbers Kafka-style for each row/chunk of ingress stream
+- Ack latest committed sequence number
+    + Works for any data layout
+    + Scalable, works when grouping rows into columnar layout
+- Ingester logs state changes with every chunk
+- On error:
+    + Rewind to last committed sequence number (may rely on client for replay)
+    + Ingester uses logged events to reconstruct prev state
 
 ---
 
@@ -276,7 +351,7 @@ Reading Col1_R2 is not.  We have to read all four versions to collapse into the 
 
 ## Version Control
 
-Writers must provide their own external synchronization mechanism to make sure they are all writing the same version.
+Partitions must provide their own external synchronization mechanism to make sure they are all writing the same version.
 
 ---
 
@@ -304,118 +379,9 @@ Have a small core and layer functionality on top.  Keep the core extremely simpl
 
 ---
 
-## Sharding
-
-Because one Cassandra physical row might not be enough for larger datasets.
-
-* Single writer - increment shard # when one fills up one physical row
-* Multiple writers - have a singleton (Akka cluster?) provision shards.  New one whenever any writer fills up one row.  Shards from multiple writers will be interleaved.
-* Custom - for example, a geo Z-curve based sharding.  The shard numbers might not be incremental at all, but based on the higher order bits of the z-curve.
-
----
-
 ## Primary keys
 
 - Needed in some cases to look up a row by a user-defined key
 - Recommend: optimize for bulk ingest/read, store primary key as just another column
 - Add an inverted index mapping primary key to `(version, shard, row_id)`
     + Consider using Lucene integrations like StratioBD, Stargate (would need some customizations to work with this schema)
-
----
-
-## Deep Dive - Ingestion
-
---
-
-## Ingestion Goals
-
-1. Don't lose any data!  Idempotent at-least-once
-2. Backpressure.  Ingest only when ready.
-3. Support distributed bulk ingest
-4. Efficient ingest and efficient retries
-5. Should work for streaming data, including error recovery
-
---
-
-## Ingestion API
-
-- User divides dataset into independent parts or streams, sequences input rows
-- FiloDB should take care of details like sharding, row IDs
-- Regular acks of incoming stream
-
---
-
-## Typical Ingest Message Flow
-
-TODO: add websequencediagram of typical ingest workflow
-
---
-
-## Don't Lose Any Data
-
-- Increasing sequence numbers Kafka-style for each row/chunk of ingress stream
-- Ack latest committed sequence number
-    + Works for any data layout
-    + Scalable, works when grouping rows into columnar layout
-- Ingester logs state changes with every chunk
-- On error:
-    + Rewind to last committed sequence number (may rely on client for replay)
-    + Ingester uses logged events to reconstruct prev state
-
----
-
-## Detailed Use Cases / WorkFlow
-
---
-
-## Initial Ingress
-
-- (Core API) create a new dataset
-- (Core API) define columns for initial version
-- (Bulk Ingester) start ingesting rows of data
-    + New shard ID assignment
-    + Translate rows of data into individual columns of data
-    + Use lower level Core API to write out columns
-    + Know when a new shard is needed.  Initial version - fixed # of rows per shard?
-
---
-
-## Append new rows
-
-- (Bulk Ingester) restore state of current shards / look up latest shard ID
-- (Core API) create a new version if desired to write new rows into
-- (Bulk Ingester) ingest more rows of data into existing or new shard
-
-Hm, what about state of how many rows have been written to current shard?
-
---
-
-## Replace a Row
-
---
-
-## Compute a new column from existing column
-
-- Find all the shards for the desired version range
-- For each shard, merge all versions together, read into Spark
-- Compute new column
-- Bulk ingester write new column in
-
---
-
-## Export all rows
-
-- There is no concept of an offset.
-- Paging can be done using a token which translates to a `(version, shard, row_id)` or similar.
-
---
-
-## Deleting a column
-
---
-
-## DDL Operations?
-
-* Change column type - This breaks down as follows:
-    - (Core API) Create new version with same column name but different type
-    - (Spark) Use a Spark job to read from v1/columnA, do type conversion, and write v2/columnA
