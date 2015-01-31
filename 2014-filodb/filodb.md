@@ -100,11 +100,19 @@ Generate incremental views on new versions**
 
 ---
 
+## Performance Studies:
+
+- Regular Cassandra table reads vs FiloDB reads
+- Spark Cass Connector vs FiloDB Spark SQL
+    + include Tachyon/caching study
+
+---
+
 ## FiloDB Concepts
 
 - **Dataset**: a table with a schema
-- **Version**: each "diff" or incremental set of changes (appends / updates / deletes / new column)
-- **Partition**: contains one set of rows for all the columns in a version.  Divides and distributes the dataset.
+- **Version**: each "diff" or incremental set of changes (appends / updates / deletes / new column).  Maps well to new slices of data or annotating existing records with new columns.
+- **Partition**: Divides and distributes the dataset. Allows parallel ingest.
 
 ---
 
@@ -127,21 +135,46 @@ Generate incremental views on new versions**
 
 ---
 
-## Detailed Use Case: Incremental Traffic Analysis
+## Socrata Use Case: Public Dataset Versioning
 
-(Or talk about the incremental data analysis possibilities)
+- Versions correspond to periodic updates (appends, deletes)
+    + Much cheaper than copying entire tables
+    + Replace and deletes at row level not possible with Parquet
+- Partitions used for parallel ingest of very large datasets
 
 ---
 
-## Detailed Use Case: Ad-Hoc Analysis of Streaming Data
+## Socrata Use Case: Geospatial Choropleths and Point Maps
+
+- Distributed geo-region coding
+    + Add new "zip code", "police district", 1 column per overlay
+    + point map aggregation/clustering: 1 column per zoom level
+- Partitions map to different geo regions
 
 ---
 
-## Performance Studies:
+## Use Case: Exactly-once ingestion from Kafka
 
-- Regular Cassandra table reads vs FiloDB reads
-- Spark Cass Connector vs FiloDB Spark SQL
-    + include Tachyon/caching study
+---
+
+## Use Case: Computed Columns and RDBMS-like DDL
+
+---
+
+## Use Case: IoT / Incremental Streaming Traffic Analysis
+
+- Generating vehicle velocity vectors and proximity info on incremental slices
+- Again, partitions map to different geo regions
+- Versions = time
+
+---
+
+## Use Case: Distributed Time-Series
+
+- Partitions for parallel ingestion
+- Versions for chunks of time
+- Roll up oldest versions/time
+- Compare performance to KairosDB
 
 ---
 
@@ -156,6 +189,7 @@ This will probably change a lot.
 ```sql
 CREATE TABLE datasets (
     name text,
+    partitions list<text>,
     properties map<text, text>,
     PRIMARY KEY (name)
 );
@@ -188,24 +222,21 @@ Dataset_name being partition key allows traversal of versions and columns.
 
 ## Partitions table
 
-This is for tracking all the partitions for a given dataset.  
+This is for tracking the shards within a partition.
 
 ```sql
 CREATE TABLE partitions (
     dataset text,
     partition text,
-    lastRowId int,
     shardingStrategy text,
     firstRowId list<int>,
     firstVersion list<int>,
     versionBitMap list<blob>,
-    PRIMARY KEY (dataset, partition)
+    PRIMARY KEY ((dataset, partition))
 );
 ```
 
 Partitions are internally sharded.  Different sharding strategies are available, but it is not a user-facing concern.  "bySize:<sizeInMB>" "byFixedNumRows:<numRows>"
-
-NOTE: lastRowId will be < 0 if the partition has no committed data yet.
 
 --
 
@@ -234,6 +265,8 @@ CREATE TABLE data (
     version int,
     partition text,
     firstRowId int,
+    lastRowId int static,
+    columns set<text> static,
     column_name text,
     row_id int,
     data blob
@@ -361,6 +394,10 @@ Partitions must provide their own external synchronization mechanism to make sur
     - efficient reading of relevant versions (server side skipping of data)
     - help with compaction of versions
 * HBase would be easier actually due to the built in versioning API
+
+---
+
+## Column Versioning
 
 ---
 
