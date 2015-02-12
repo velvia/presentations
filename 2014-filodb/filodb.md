@@ -44,6 +44,14 @@ Generate incremental views on new versions**
 
 ---
 
+## Spark SQL Queries!
+
+```sql
+SELECT first, last, age FROM customers WHERE _version > 3 AND age < 40 LIMIT 100
+```
+
+---
+
 ## Tight Spark Integration
 
 * Read tables into Spark SQL, process, join, write back out as new tables or versions
@@ -58,6 +66,8 @@ Generate incremental views on new versions**
 
 ## Use Cases
 
+TODO: Get rid of "I want" and turn into a list of "Breakthroughs" or "Why you should care"
+
 - I want really fast Spark SQL queries on Cassandra
 - I love Parquet, but HDFS is a pain, and/or I need more flexibility
     + Idempotent writes, easily add new columns and rows
@@ -67,20 +77,17 @@ Generate incremental views on new versions**
 - I want an awesome HA and replication story
 - I have many tables of various sizes, including ones too big for traditional RDBMS 
 
----
-
-## What FiloDB is Optimized For
-
-- Bulk appends and updates
-- OLAP / Data warehousing queries (full table scans)
-- Generating views
+NOTE: We'll go over most of these
 
 ---
 
-## What FiloDB is Not Optimized For
+## Versioning - why it matters
 
-- Pinpoint reads and writes
-- OLTP
+- Databases: let's mutate one giant piece of state in place
+- With Big Data and streaming, incremental processing is more and more important
+- FiloDB is built on functional principles and lets you version and layer changes.  Add changes as new versions, don't mutate!
+
+NOTE: Databases have largely remained the same - even more modern, in-memory ones.They are basically one monolithic piece of state.
 
 ---
 
@@ -105,6 +112,26 @@ Generate incremental views on new versions**
 - Regular Cassandra table reads vs FiloDB reads
 - Spark Cass Connector vs FiloDB Spark SQL
     + include Tachyon/caching study
+
+---
+
+## What FiloDB is Optimized For
+
+- Bulk appends and updates
+- Ingesting a few datasets at a time in bulk
+- OLAP / Data warehousing queries (full table scans)
+- Generating views
+
+---
+
+## What FiloDB is Not Optimized For
+
+- Pinpoint reads and writes
+- OLTP
+
+---
+
+# <span class="golden">FiloDB</span> Use Cases
 
 ---
 
