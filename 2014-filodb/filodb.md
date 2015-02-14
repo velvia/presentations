@@ -31,13 +31,13 @@ Apache Cassandra.  Scale out with no SPOF.  Cross-datacenter replication.
 
 Incrementally add a column or a few rows as a new version.  Easily control what versions to query.  Roll back changes inexpensively.
 
-Generate incremental views on new versions**
+Stream out new versions as continuous queries :)
 
 ---
 
 ## Columnar
 
-- Values from the same column are stored together
+- Parquet-style storage layout
 - Retrieve select columns and minimize I/O for OLAP queries
 - Add a new column without having to copy the whole table
 - Vectorization and lazy/zero serialization for extreme efficiency
@@ -47,37 +47,43 @@ Generate incremental views on new versions**
 ## Spark SQL Queries!
 
 ```sql
-SELECT first, last, age FROM customers WHERE _version > 3 AND age < 40 LIMIT 100
+SELECT first, last, age FROM customers
+  WHERE _version > 3 AND age < 40 LIMIT 100
 ```
 
 ---
 
-## Tight Spark Integration
-
-* Read tables into Spark SQL, process, join, write back out as new tables or versions
-* Easily integrate FiloDB with other sources - JSON, Avro, Parquet, Hive tables, etc.
-* Use 1.2 Spark SQL data source API to selectively read only necessary columns
-* Should be easy to cache columns in Tachyon using the Table support feature
-* Implement custom `FiloColumnarRelation` that can efficiently scan ByteBuffers read from Cassandra.
-    - Like `spark.sql.columnar.InMemoryRelation` but no need to recompress from source!  Should be much faster
-    - Would be really interesting to compare with Parquet
+## Think of <span class="golden">FiloDB</span> as
+## Git + Parquet
+## meets Cassandra and Spark
 
 ---
 
-## Use Cases
+## A Database built for Streaming
 
-TODO: Get rid of "I want" and turn into a list of "Breakthroughs" or "Why you should care"
+- FiloDB is built for easy *exactly-once* ingestion from Kafka
+- Stream process / query new versions continuously
+- Back pressure designed in from the start
 
-- I want really fast Spark SQL queries on Cassandra
-- I love Parquet, but HDFS is a pain, and/or I need more flexibility
-    + Idempotent writes, easily add new columns and rows
-- I want to version my changes and query on versions.  
-- I want a way to easily do incremental data analysis
-- I want at-least-once/exactly once ingestion from Kafka / streaming sources
-- I want an awesome HA and replication story
-- I have many tables of various sizes, including ones too big for traditional RDBMS 
+NOTE: Traditional databases are a poor match for modern streaming, incremental workloads.
 
-NOTE: We'll go over most of these
+---
+
+## OLAP Performance without the Pain
+
+- Really fast Spark SQL queries on Cassandra
+    + No need to set up HDFS/Hadoop for analytical workloads
+- Add new columns really cheaply.  Change the schema with new versions.
+- Idempotent writes - no need for deduplication jobs in HDFS
+
+---
+
+## Performance Studies:
+
+- Regular Cassandra table reads vs FiloDB reads
+- Spark Cass Connector vs FiloDB Spark SQL
+    + include Tachyon/caching study
+- Parquet vs FiloDB
 
 ---
 
@@ -86,14 +92,24 @@ NOTE: We'll go over most of these
 - Databases: let's mutate one giant piece of state in place
 - With Big Data and streaming, incremental processing is more and more important
 - FiloDB is built on functional principles and lets you version and layer changes.  Add changes as new versions, don't mutate!
+- Keep reading from older versions as changes are done to new versions
 
 NOTE: Databases have largely remained the same - even more modern, in-memory ones.They are basically one monolithic piece of state.
 
 ---
 
-## Think of <span class="golden">FiloDB</span> as
-## Git + Parquet
-## meets Cassandra and Spark
+## Versioning enables Streaming
+
+TODO: add a diagram showing new versions continuously ingested and streaming out to Spark streaming
+
+---
+
+## Tight Spark Integration
+
+* Read tables into Spark SQL, process, join, write back out as new tables or versions
+* Easily integrate FiloDB with other sources - JSON, Avro, Parquet, Hive tables, etc.
+* Use 1.2 Spark SQL data source API to selectively read only necessary columns
+* Spark Streaming input and Spark Streaming processing of changes / new versions
 
 ---
 
@@ -104,14 +120,6 @@ NOTE: Databases have largely remained the same - even more modern, in-memory one
 - FiloDB stores values from the same column together on disk, minimizing I/O for OLAP queries
 - Initial studies show columnar layout is much more compact and 10-100x more efficient on reads
 - FiloDB is designed for a virtually unlimited number of tables.  Cassandra will OOM with lots of CFs.
-
----
-
-## Performance Studies:
-
-- Regular Cassandra table reads vs FiloDB reads
-- Spark Cass Connector vs FiloDB Spark SQL
-    + include Tachyon/caching study
 
 ---
 
@@ -143,22 +151,24 @@ NOTE: Databases have largely remained the same - even more modern, in-memory one
 
 ---
 
-## Assumptions and Tradeoffs
-
-- Only one writer per partition.  Partitions are independent, like Kafka.
-    + User decides how to partition data
-    + Partitions can have varying size, rows numbered from 0 to N-1
-    + Groups of rows converted into column chunks
-    + A version/partition/row# uniquely identifies data within a dataset
-- Each version is the unit of atomic change.  Changes within a version may not be atomic.
-- Versions can be used for change isolation and propagation
-    + No need for explicit transaction log.  Just read out data from a version
+## Use Case: Exactly-once ingestion from Kafka
 
 ---
 
-## From Rows to Columns
+## Use Case: IoT / Incremental Streaming Traffic Analysis
 
-(TODO: Insert a diagram converting rows into column chunks, illustrating how within each partition data is addressed by row #)
+- Generating vehicle velocity vectors and proximity info on incremental slices
+- Again, partitions map to different geo regions
+- Versions = time
+
+---
+
+## Use Case: Distributed Time-Series
+
+- Partitions for parallel ingestion
+- Versions for chunks of time
+- Roll up oldest versions/time
+- Compare performance to KairosDB
 
 ---
 
@@ -180,28 +190,33 @@ NOTE: Databases have largely remained the same - even more modern, in-memory one
 
 ---
 
-## Use Case: Exactly-once ingestion from Kafka
-
----
-
 ## Use Case: Computed Columns and RDBMS-like DDL
 
 ---
 
-## Use Case: IoT / Incremental Streaming Traffic Analysis
-
-- Generating vehicle velocity vectors and proximity info on incremental slices
-- Again, partitions map to different geo regions
-- Versions = time
+# <span class="golden">FiloDB</span> Deep Dive
 
 ---
 
-## Use Case: Distributed Time-Series
+## Assumptions and Tradeoffs
 
-- Partitions for parallel ingestion
-- Versions for chunks of time
-- Roll up oldest versions/time
-- Compare performance to KairosDB
+- Only one writer per partition.  Partitions are independent, like Kafka.
+    + User decides how to partition data
+    + Partitions can have varying size, rows numbered from 0 to N-1
+    + Groups of rows converted into column chunks
+    + A version/partition/row# uniquely identifies data within a dataset
+- Each version is the unit of atomic change.  Changes within a version may not be atomic.
+- Versions can be used for change isolation and propagation
+    + No need for explicit transaction log.  Just read out data from a version
+
+---
+
+## Spark Notes
+
+* Should be easy to cache columns in Tachyon using the Table support feature
+* Implement custom `FiloColumnarRelation` that can efficiently scan ByteBuffers read from Cassandra.
+    - Like `spark.sql.columnar.InMemoryRelation` but no need to recompress from source!  Should be much faster
+    - Would be really interesting to compare with Parquet
 
 ---
 
@@ -378,6 +393,12 @@ Also note that the chunk size determines the minimum size of data that is replac
 - Row ID of each column chunk is the first row # of each chunk
 - Append-only pattern: write to shard with highest starting row ID
 - Regular acks of incoming stream
+
+---
+
+## From Rows to Columns
+
+(TODO: Insert a diagram converting rows into column chunks, illustrating how within each partition data is addressed by row #)
 
 --
 
