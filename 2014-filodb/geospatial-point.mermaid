@@ -1,0 +1,13 @@
+graph LR;
+
+  subgraph geo-region-1
+  A(point data) --> B(FiloDB point column)
+  B --> C(point-in-polygon)
+  C --> D(FiloDB new Zip Code column)
+  end
+
+  subgraph geo-region-2
+  E(point data) --> F(FiloDB point column)
+  F --> G(point-in-polygon)
+  G --> H(FiloDB new Zip Code column)
+  end

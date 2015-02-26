@@ -1,0 +1,7 @@
+graph LR;
+
+A(Kafka) --> B(Spark Streaming)
+B --> C(FiloDB new version)
+C --> D(aggregate new version)
+D --> E(Combine)
+F[Existing aggregate] --> E

@@ -1,0 +1,7 @@
+graph LR;
+k1(Kafka Partition 1);
+k2(Kafka Partition 2);
+f1(FiloDB Partition 1);
+f2(FiloDB Partition 2);
+k1-- Seq 1,2,3 -->f1;
+k2-- Seq 1,2,3 -->f2;

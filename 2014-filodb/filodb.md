@@ -151,13 +151,31 @@ TODO: add a diagram showing new versions continuously ingested and streaming out
 
 ---
 
-## Use Case: Exactly-once ingestion from Kafka
+## Use Case:
+## Exactly-once ingestion from Kafka
+
+![](kafka-ingestion.mermaid.png)
+<!-- .element: class="mermaid" -->
+
+Replay of events from last ack + idempotent operations = exactly once writes
 
 ---
 
 ## Use Case: IoT / Incremental Streaming Traffic Analysis
 
+![](IoT-streaming.mermaid.png)
+<!-- .element: class="mermaid" -->
+
 - Generating vehicle velocity vectors and proximity info on incremental slices
+- Sliding window aggregation: add delta aggregation from latest version, subtract delta from earliest version in window
+
+---
+
+## Use Case: IoT
+
+![](IoT-partitioning.mermaid.png)
+<!-- .element: class="mermaid" -->
+
 - Again, partitions map to different geo regions
 - Versions = time
 
@@ -181,16 +199,29 @@ TODO: add a diagram showing new versions continuously ingested and streaming out
 
 ---
 
-## Socrata Use Case: Geospatial Choropleths and Point Maps
+## Socrata Use Case: Geospatial Choropleths
 
-- Distributed geo-region coding
-    + Add new "zip code", "police district", 1 column per overlay
-    + point map aggregation/clustering: 1 column per zoom level
+![](geospatial-point.mermaid.png)
+<!-- .element: class="mermaid" -->
+
+---
+
+## Socrata Use Case: Geospatial Choropleths
+
+- Want to aggregate big point data by different geo boundaries
 - Partitions map to different geo regions
+- Distributed geo-region coding 
+    + Point (lat, long) -> Zip code polygon  (Spark SQL)
+    + polygon IDs stored as new column, aggregated for choropleths
+    + Additional region geometries cheaply added as new columns
 
 ---
 
 ## Use Case: Computed Columns and RDBMS-like DDL
+
+On new version: compute column B from column A
+
+DDL: Insert new version/column, column changed type.  Read from old version/type, transform to new version/type, write back. 
 
 ---
 

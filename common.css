@@ -19,6 +19,15 @@ p {
   background: #999999;
 }
 
+.reveal .mermaid {
+  background: #999999;
+  border: 1px solid;
+  padding: 3px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto
+}
+
 .reveal table {
   margin-left: auto;
   margin-right: auto;
