@@ -11,7 +11,7 @@
 - Principal Engineer, [Socrata, Inc.](http://www.socrata.com)
 - @evanfchan
 - [`http://github.com/velvia`](http://github.com/velvia)
-- Creator of [Spark Job Server](http://github.com/spark-jobserver/spark-jobserver)
+- Active in multiple OSS projects including Apache Spark
 
 ---
 
