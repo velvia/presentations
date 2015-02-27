@@ -78,9 +78,19 @@ NOTE: Traditional databases are a poor match for modern streaming, incremental w
 
 ---
 
-## Performance Studies:
+## Performance: Cassandra
 
-- Regular Cassandra table reads vs FiloDB reads
+- Regular Cassandra table (CQL) reads vs FiloDB reads
+- Study of different layouts of GDELT dataset on Cassandra 2.0.9
+    + https://github.com/velvia/cassandra-gdelt
+- Full table scan queries:
+    + All columns: FiloDB is up to 90x faster
+    + 1 out of 20 columns: FiloDB is up to 400x faster
+
+---
+
+## Performance: Cassandra and Spark
+
 - Spark Cass Connector vs FiloDB Spark SQL
     + include Tachyon/caching study
 - Parquet vs FiloDB
@@ -90,6 +100,7 @@ NOTE: Traditional databases are a poor match for modern streaming, incremental w
 ## Versioning - why it matters
 
 - Databases: let's mutate one giant piece of state in place
+    + **Basically hasn't changed since 1970's!**
 - With Big Data and streaming, incremental processing is more and more important
 - FiloDB is built on functional principles and lets you version and layer changes.  Add changes as new versions, don't mutate!
 - Keep reading from older versions as changes are done to new versions
@@ -100,7 +111,8 @@ NOTE: Databases have largely remained the same - even more modern, in-memory one
 
 ## Versioning enables Streaming
 
-TODO: add a diagram showing new versions continuously ingested and streaming out to Spark streaming
+![](versioning-streaming.mermaid.png)
+<!-- .element: class="mermaid" -->
 
 ---
 
@@ -178,6 +190,8 @@ Replay of events from last ack + idempotent operations = exactly once writes
 
 - Again, partitions map to different geo regions
 - Versions = time
+- Makes geospatial queries efficient and easy
+- To query by entity (eg vehicle), stream in another table partitioned by vehicle
 
 ---
 
