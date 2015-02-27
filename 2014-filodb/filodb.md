@@ -137,10 +137,11 @@ NOTE: Databases have largely remained the same - even more modern, in-memory one
 
 ## What FiloDB is Optimized For
 
-- Bulk appends and updates
+- Bulk appends of structured data
+- Wholesale replacements of datasets
 - Ingesting a few datasets at a time in bulk
 - OLAP / Data warehousing queries (full table scans)
-- Generating views
+- Generating incremental views
 
 ---
 
