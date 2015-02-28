@@ -1,0 +1,11 @@
+graph TB
+  A(point dataset) -->|points| G1[Geospace stream processor]
+  A(point dataset) -->|points| G2[Geospace stream processor]
+  G1 --> S[Ingestion microservice]
+  G2 --> S
+  A ==> S
+  S --> P(PostGreSQL)
+  S --> ES(ElasticSearch)
+  S --> O(Other data stores)
+  SF(GeoJSON shape files) --> G1
+  SF --> G2

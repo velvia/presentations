@@ -31,7 +31,14 @@ Note: We are the open data and open government company. We organize lots of civi
 
 TODO: Include screenshots of current product, map usage, new UX
 
-TODO: Highlight interesting data sets
+---
+
+## Interesting Geo data sets
+
+- New York Taxis (link to Chris Whong's visualization) (TODO: own slide?)
+- Chicago crimes
+- Something at state or federal level?
+- GDELT?
 
 ---
 
@@ -90,6 +97,7 @@ Standard PostGIS workflow:
 - Create a JOIN table, or insert a column in original table
     + various tradeoffs.... managing multiple join tables ick ick ick
 - Latency is too high, need to wait for entire table to be inserted
+- We also want to enable alternative datastores easily
 
 --
 
@@ -110,11 +118,23 @@ Standard PostGIS workflow:
 ![](scala.jpg)
 </center>
 
+The rise of functional programming due to many-core, distributed systems.
+
+- Immutable data structures make concurrency safe
+- Very rich concurrency and distributed programming (Akka actors)
+- Functional transformations - map, reduce
+- Much more concise and productive than Java
+
+---
+
+## Scala is dominating big data world
+
+- Apache Spark: by far the hottest big data platform, written in Scala
+- GeoTrellis
+- `map`, `reduce`, `fold`, `sort` transforms small or big data
+    + Learn it once, use it in Spark, Scalding, SummingBird, etc.
 - Take advantage of Java Geospatial ecosystem
     + JTS, GeoTools, GeoServer, etc.
-- Much more concise and productive than Java
-- Functional nature a good fit for big and streaming data
-    + Apache Spark, GeoTrellis, more
 
 ---
 
@@ -127,7 +147,13 @@ Socrata has been a 100% Scala shop in our backend services for 2-3 years, starte
 ## Our Architecture
 
 - Overall diagram: include multiple Geospaces
-- Diagram showing Geospace connections during ingress, reading
+
+---
+
+## Point data ingestion
+
+![](geospace-coding.mermaid.png)
+<!-- .element: class="mermaid" -->
 
 ---
 
@@ -178,8 +204,12 @@ Cons:
 
 ## Sharding!
 
-- Add a diagram of sharding by region dataset
+| Geospace 1  |  Geospace 2  |
+| :---------- | :----------- |
+| US zipcodes | Chicago wards |
+| Census blocks | New York boroughs |
 
+- Direct points to instance based on region dataset to code against
 - Easy to implement, scales (kind of)
 - "Hot spot" of large region datasets
     + Huge variation of region dataset sizes - 1000's to millions of coordinates
@@ -240,6 +270,7 @@ Example: compression
 
 - Uses very little extra memory
 - 10x speedup!!
+- Doesn't help with memory efficiency though
 
 ---
 
@@ -251,9 +282,15 @@ Example: compression
 
 ---
 
-## Big Data Roadmap
+## Spark Roadmap
 
-TODO: insert a diagram of using Spark (Streaming) with partitioned geo boundaries
+![](spark-geo-partitioning.mermaid.png)
+<!-- .element: class="mermaid" -->
+
+1. Create an RDD of Points with a custom partitioning by geo region
+2. Geo-region-code
+
+If points are not partitioned evenly, perhaps partition by hash of (geo-region and other bucket).
 
 ---
 
