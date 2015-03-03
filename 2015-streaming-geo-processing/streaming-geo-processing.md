@@ -106,9 +106,8 @@ Way too slow!  <!-- .element: class="fragment roll-in" -->
 
 --
 
-- ~10000 points in polygon per second (PostGIS)
-    + and the JOIN is only possible if dataset resides in same DB
-- would take 100 seconds for a 1 million row dataset
+- would take 103 seconds for a 5.5 million row dataset (PostGres 9.3.4)
+- JOIN is only possible if dataset resides in same DB
 - we have datasets that are 20 million rows, and growing
 
 TODO: insert picture of watching paint dry
