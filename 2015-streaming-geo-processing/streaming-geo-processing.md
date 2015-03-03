@@ -94,9 +94,12 @@ Most of the interesting data that citizens and government care about are highly 
 ## Can this be done on query?
 
 ``` sql
-SELECT p.count(1), z.zipcode FROM points p, zipcodes z
-WHERE ST_intersects(p.point, z.the_geometry) 
-GROUP BY z.zipcode 
+select count(*) as count, r.ward, c.primary_type
+from crimes_100000 as c
+join wards as r
+on ST_Contains(r.geom, c.point)
+group by r.ward, c.primary_type
+order by count desc;
 ```
 
 Way too slow!  <!-- .element: class="fragment roll-in" -->
@@ -185,6 +188,30 @@ Socrata has been a 100% Scala shop in our backend services for 2-3 years, starte
 
 ![](geospace-coding.mermaid.png)
 <!-- .element: class="mermaid" -->
+
+---
+
+## Geospace server stack
+
+A microservice for geo-region-coding 
+
+- Scala 2.10
+- [Scalatra](http://www.scalatra.org)
+- JTS
+- GeoTools / [Geoscript.scala](https://github.com/dwins/geoscript.scala)
+- Service registration and discovery using [socrata-http](http://github.com/socrata/socrata-http)
+
+---
+
+## Geo-region-coding in detail
+
+1. Request comes in for coding points against a certain set of shapes
+2. Load shapes from data backend if needed
+    - GeoJSON parsing
+    - reprojection if needed to WGS84
+    - store envelopes of shapes into `STRTree`
+3. For each point, find matching envelopes in spatial index
+4. Search through geometries using intersects
 
 ---
 
@@ -348,11 +375,24 @@ If points are not partitioned evenly, perhaps partition by hash of (geo-region a
 
 ---
 
+## Future Work and Enhancements
+
+- Geo vector processing in Spark
+- Streaming GeoJSON parser
+- Collaboration with LocationTech folks
+    + GeoMesa and Cassandra
+    + Geotrellis
+- Higher performance geometry representations
+
+---
+
 ## Open Source
 
 http://www.github.com/socrata/tile-server
 
 http://www.github.com/socrata/geospace
+
+[Socrata GeoJSON parser](https://github.com/socrata/socrata-thirdparty-utils/blob/master/core/src/main/scala/com/socrata/thirdparty/geojson/GeoJson.scala)
 
 ---
 
