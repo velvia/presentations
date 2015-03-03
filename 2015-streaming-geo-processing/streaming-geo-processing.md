@@ -27,18 +27,49 @@ Note: We are the open data and open government company. We organize lots of civi
 
 ---
 
-## Why Socrata cares about Geo
+## Many interesting datasets
 
-TODO: Include screenshots of current product, map usage, new UX
+- Geospatial Data
+- Public Safety Data
+- Traffic, Crime, Environmental, Complaints
+- Salary Data
+- Health Data
+- Expenditure Data
+- Education Data
+- Census Data
+- Parcel Property Data
+- Business Data
+- Locations of Government Services
 
 ---
 
-## Interesting Geo data sets
+## Why Socrata cares about Geo
 
-- New York Taxis (link to Chris Whong's visualization) (TODO: own slide?)
-- Chicago crimes
-- Something at state or federal level?
-- GDELT?
+Most of the interesting data that citizens and government care about are highly geographical:
+
+- 311 and 911 data
+- where crimes are occurring
+- traffic and transportation information
+
+--
+
+## Chicago energy usage by community area
+
+![](chicago-energy-by-comm-area.png)
+
+--
+
+## New York City taxi patterns
+
+![](NYC-taxis.png)
+
+--
+
+## Open Data Visualizations
+
+![](choropleths-example.png)
+
+![](newUX-barchart.png)
 
 ---
 
@@ -224,9 +255,23 @@ TODO: insert visual diagram of partitioning shapes/map into regions
 
 ## Partitioning
 
+| Geospace 1  |  Geospace 2  |
+| :---------- | :----------- |
+| zips-regionAE | zips-regionBF |
+| chicagoWards-AE | census-BF |
+
 - Most of our point datasets are heavily localized
 - Helps both loading regions into memory and reduce memory pressure
 - Much more fine grained and even distribution/sharding
+
+---
+
+## Partitioning: How?
+
+- Partition all the region datasets using the same hashing scheme
+    + Implies common projection for everything - should be doing this anyways
+- GeoHash
+- Space-filling curve
 
 ---
 
@@ -238,7 +283,7 @@ Example: compression
 
 ---
 
-## Try 1: Store compact geometries
+## Store compact geometries
 
 - Store as WKB, decompress and cache on demand
 - Or, use `PackedCoordinateSequence` for compact representation that expands on demand
@@ -254,23 +299,24 @@ Example: compression
 
 ---
 
-## Try 1 results
+## Results
 
 - 60% less memory usage minimum, but 40% more if every shape is read and used
-- Just as fast as before after decompression.
+- Just as fast as normal Geometry, on average.
+- Soft reference for `Coordinate[]` means expanded representation is released under memory pressure
 - If you don't cache:
     + Memory stays at 60% less
     + You take a 37% slowdown in intersection/covers due to deserialization
 
 ---
 
-## Try 2: Use PreparedGeometry
+## Use PreparedGeometry
 
 `PreparedGeometryFactory.prepare(geom)`
 
 - Uses very little extra memory
 - 10x speedup!!
-- Doesn't help with memory efficiency though
+- Combine with `PackedCoordinateSequence` for memory efficiency plus speed!
 
 ---
 
@@ -278,7 +324,15 @@ Example: compression
 
 - Use the more efficient JTS `CoordinateSequence` APIs to extract ordinate values (x, y) instead of always relying on `Coordinate[]`
 - Store as a packed double array or packed floating point delta array
-- Combine with PreparedGeometry
+- Binary representation that doesn't require deserialization
+
+---
+
+## BTW: Implementing custom CoordinateSequences
+
+Not that hard:  https://gist.github.com/velvia/69ca1ab5e758d3b0ab13
+
+- If you want better performance requirements, probably necessary.
 
 ---
 
