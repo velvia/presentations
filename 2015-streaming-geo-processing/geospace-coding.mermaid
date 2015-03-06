@@ -1,8 +1,8 @@
 graph TB
   A(point dataset) -->|points| G1[Geospace stream processor]
   A(point dataset) -->|points| G2[Geospace stream processor]
-  G1 --> S[Ingestion microservice]
-  G2 --> S
+  G1 -->|geom IDs| S[Ingestion microservice]
+  G2 -->|geom IDs| S
   A ==> S
   S --> P(PostGreSQL)
   S --> ES(ElasticSearch)

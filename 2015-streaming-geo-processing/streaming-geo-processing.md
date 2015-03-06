@@ -18,38 +18,36 @@
 ## ![](socrata-white-medium.png)
 
 <center>
-<h3>We build <span style="color: #4e82ff">software</span> to make <span style="color: #ff5887">data</span> useful to <span style="color: #f7b63d">more people</span>.</h3>
+<h3>The leading open <span style="color: #ff5887">data</span> software platform</h3>
 </center>
 
-[data.edmonton.ca](http://data.edmonton.ca) [finances.worldbank.org](http://finances.worldbank.org) [data.cityofchicago.org](http://data.cityofchicago.org) [data.seattle.gov](http://data.seattle.gov) [data.oregon.gov](http://data.oregon.gov) [data.wa.gov](http://data.wa.gov) [www.metrochicagodata.org](http://www.metrochicagodata.org) [data.cityofboston.gov](http://data.cityofboston.gov) [info.samhsa.gov](http://info.samhsa.gov) [explore.data.gov](http://explore.data.gov) [data.cms.gov](http://data.cms.gov) [data.ok.gov](http://data.ok.gov) [data.nola.gov](http://data.nola.gov) [data.illinois.gov](http://data.illinois.gov) [data.colorado.gov](http://data.colorado.gov) [data.austintexas.gov](http://data.austintexas.gov) [data.undp.org](http://data.undp.org) [www.opendatanyc.com](http://www.opendatanyc.com) [data.mo.gov](http://data.mo.gov) [data.nfpa.org](http://data.nfpa.org) [data.raleighnc.gov](http://data.raleighnc.gov) [dati.lombardia.it](http://dati.lombardia.it) [data.montgomerycountymd.gov](http://data.montgomerycountymd.gov) [data.cityofnewyork.us](http://data.cityofnewyork.us) [data.acgov.org](http://data.acgov.org) [data.baltimorecity.gov](http://data.baltimorecity.gov) [data.energystar.gov](http://data.energystar.gov) [data.somervillema.gov](http://data.somervillema.gov) [data.maryland.gov](http://data.maryland.gov) [data.taxpayer.net](http://data.taxpayer.net) [bronx.lehman.cuny.edu](http://bronx.lehman.cuny.edu) [data.hawaii.gov](http://data.hawaii.gov) [data.sfgov.org](http://data.sfgov.org) [data.cityofmadison.com](http://data.cityofmadison.com) [healthmeasures.aspe.hhs.gov](http://healthmeasures.aspe.hhs.gov) [data.weatherfordtx.gov](http://data.weatherfordtx.gov) [www.data.act.gov.au](http://www.data.act.gov.au) [data.wellingtonfl.gov](http://data.wellingtonfl.gov) [data.honolulu.gov](http://data.honolulu.gov) [data.kcmo.org](http://data.kcmo.org) [data2020.abtassociates.com](http://data2020.abtassociates.com)
+[data.edmonton.ca](http://data.edmonton.ca) [finances.worldbank.org](http://finances.worldbank.org) [data.cityofchicago.org](http://data.cityofchicago.org) [data.seattle.gov](http://data.seattle.gov) [data.oregon.gov](http://data.oregon.gov) [data.wa.gov](http://data.wa.gov) [www.metrochicagodata.org](http://www.metrochicagodata.org) [data.cityofboston.gov](http://data.cityofboston.gov) [info.samhsa.gov](http://info.samhsa.gov) [explore.data.gov](http://explore.data.gov) [data.cms.gov](http://data.cms.gov) [data.ok.gov](http://data.ok.gov) [data.nola.gov](http://data.nola.gov) [data.illinois.gov](http://data.illinois.gov) [data.colorado.gov](http://data.colorado.gov) [data.austintexas.gov](http://data.austintexas.gov) [data.undp.org](http://data.undp.org) [www.opendatanyc.com](http://www.opendatanyc.com) [data.mo.gov](http://data.mo.gov) [data.nfpa.org](http://data.nfpa.org) [data.raleighnc.gov](http://data.raleighnc.gov) [dati.lombardia.it](http://dati.lombardia.it) [data.montgomerycountymd.gov](http://data.montgomerycountymd.gov) [data.cityofnewyork.us](http://data.cityofnewyork.us) [data.acgov.org](http://data.acgov.org) [data.baltimorecity.gov](http://data.baltimorecity.gov) [data.energystar.gov](http://data.energystar.gov) [data.somervillema.gov](http://data.somervillema.gov) [data.maryland.gov](http://data.maryland.gov) [data.taxpayer.net](http://data.taxpayer.net) [bronx.lehman.cuny.edu](http://bronx.lehman.cuny.edu) [data.hawaii.gov](http://data.hawaii.gov) [data.sfgov.org](http://data.sfgov.org)
 
-Note: We are the open data and open government company. We organize lots of civic hackathons.  We publish government data to make it easy for you to be an informed citizen.  Our mission is to enable data-driven government.
+Note: I'm proud to rep Socrata - we are the open data and open government company. Our mission is to help government inform citizens and provide awesome APIs and visualizations. We organize lots of civic hackathons.
 
 ---
 
-## Many interesting datasets
+## 21st century government
 
-- Geospatial Data
-- Public Safety Data
-- Traffic, Crime, Environmental, Complaints
-- Salary Data
-- Health Data
-- Expenditure Data
-- Education Data
-- Census Data
-- Parcel Property Data
-- Business Data
-- Locations of Government Services
+<center>Data-driven government and informed citizens can:</center>
+
+- Lower the cost of healthcare
+- Improve education systems
+- Fight climate change
+- Improve city safety
+- Reduce the occurrences of crime
+- Reduce bureaucratic inefficiencies
+- Spur local innovation
 
 ---
 
 ## Why Socrata cares about Geo
 
-Most of the interesting data that citizens and government care about are highly geographical:
-
 - 311 and 911 data
 - where crimes are occurring
 - traffic and transportation information
+
+NOTE: Most of the interesting data that citizens and government care about are highly geographical
 
 --
 
@@ -110,7 +108,9 @@ Way too slow!  <!-- .element: class="fragment roll-in" -->
 - JOIN is only possible if dataset resides in same DB
 - we have datasets that are 20 million rows, and growing
 
-TODO: insert picture of watching paint dry
+<center>
+![](watch_paint_dry.jpg)
+</center>
 
 --
 
@@ -177,16 +177,12 @@ Socrata has been a 100% Scala shop in our backend services for 2-3 years, starte
 
 ---
 
-## Our Architecture
-
-- Overall diagram: include multiple Geospaces
-
----
-
-## Point data ingestion
+## Geo region coding architecture
 
 ![](geospace-coding.mermaid.png)
 <!-- .element: class="mermaid" -->
+
+The geospace microservice also ingests shapefiles.
 
 ---
 
@@ -220,7 +216,7 @@ A microservice for geo-region-coding
     + Uses an in-memory cache and Futures for efficient geo operations
 - Fast
     + 10,000+ point in polygon ops/sec per thread
-    + Only when region is in memory though - loading takes a long time
+    + Only when region is in memory though - loading could take many seconds
 - Low latency
     + Not when run low on memory or loading region shapes
 
@@ -229,9 +225,10 @@ A microservice for geo-region-coding
 ## Memory Pressure
 
 - Regularly monitoring memory usage
-    + Memory usage in Java/Scala: tricky to measure, % no good?
-- (separate slide) Why do we need active eviction?
-- Eviction: bad bad bad (latency goes out the window)
+    + `Runtime.getRuntime.freeMemory`
+    + Watch out! `maxMemory` is the currently allocated max, not -Xmx!
+    + Actively evict from cache when low on memory
+- Eviction: bad bad bad!! (latency goes out the window)
 
 ---
 
@@ -275,7 +272,7 @@ Cons:
 
 ## Partitioning
 
-TODO: insert visual diagram of partitioning shapes/map into regions
+![](partitioning-zip-codes.png)
 
 ---
 
@@ -296,16 +293,24 @@ TODO: insert visual diagram of partitioning shapes/map into regions
 
 - Partition all the region datasets using the same hashing scheme
     + Implies common projection for everything - should be doing this anyways
-- GeoHash
+- GeoHash - ASCII encoding of latitude/longitude
+    + Each letter subdivides the space into 4 x 8 grid
+    + Used in ElasticSearch, MongoDB, etc.
 - Space-filling curve
 
 ---
 
 ## Efficient Geometries
 
-Insert quote about trading off speed for memory efficiency and latency.
+<center>
+![](compression.jpg)
+</center>
 
-Example: compression
+Compression - trading absolute speed for more storage?
+
+---
+
+### The JTS `Coordinate` object takes 40 bytes for storing two doubles!
 
 ---
 
