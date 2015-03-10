@@ -439,6 +439,7 @@ http://www.github.com/socrata/geospace
 ## The Ultimate Combo
 
 - Use the more efficient JTS `CoordinateSequence` APIs to extract ordinate values (x, y) instead of always relying on `Coordinate[]`
+- However, JTS APIs are heavily dependent on Coordinate object, lots of mods required :(
 - Store as a packed double array or packed floating point delta array
 - Binary representation that doesn't require deserialization
 
