@@ -198,6 +198,28 @@ A microservice for geo-region-coding
 
 ---
 
+## JTS
+
+- Basic geometry types (Point, Line, Polygon, etc.)
+- Geometry ops (intersection, contains, etc.)
+- Some simplication algorithms
+- RTree implementations for spatial indexing
+- WKB and WKT reader/writers
+
+---
+
+## GeoTools
+
+- Shapefile reading and writing
+- FeatureCollections filtering/iteration, GeoJSON
+- JDBC and database connectors
+- CRS and projections
+- Extensions for WMS, gridding, many others
+
+NOTE: GeoTools is more of a higher level GIS toolkit.
+
+---
+
 ## Geo-region-coding in detail
 
 1. Request comes in for coding points against a certain set of shapes
@@ -206,7 +228,23 @@ A microservice for geo-region-coding
     - reprojection if needed to WGS84
     - store envelopes of shapes into `STRTree`
 3. For each point, find matching envelopes in spatial index
-4. Search through geometries using intersects
+4. Search through geometries using intersects/covers
+
+---
+
+```scala
+ /**
+   * Returns a list of Entry's which contain the given geometry, as defined by JTS contains test.
+   * Uses the spatial index to minimize the number of items to search.
+   *
+   * @param geom the Geometry which the indexed geometries should contain
+   * @return a Seq of entries containing geom.
+   */
+  def whatContains(geom: Geometry): Seq[Entry[T]] = {
+    val results = index.query(geom.getEnvelopeInternal).asScala.asInstanceOf[Seq[Entry[T]]]
+    results.filter { entry => entry.prep.covers(geom) }
+  }
+```
 
 ---
 
