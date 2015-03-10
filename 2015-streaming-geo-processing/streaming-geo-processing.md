@@ -389,19 +389,11 @@ Compression - trading absolute speed for more storage?
 
 ---
 
-## The Ultimate Combo
-
-- Use the more efficient JTS `CoordinateSequence` APIs to extract ordinate values (x, y) instead of always relying on `Coordinate[]`
-- Store as a packed double array or packed floating point delta array
-- Binary representation that doesn't require deserialization
-
----
-
 ## BTW: Implementing custom CoordinateSequences
 
 Not that hard:  https://gist.github.com/velvia/69ca1ab5e758d3b0ab13
 
-- If you want better performance requirements, probably necessary.
+- For example, for small polygons, use delta encoding to store not doubles, but floats or ints
 
 ---
 
@@ -441,3 +433,12 @@ http://www.github.com/socrata/geospace
 # Thank you!
 
 ### Socrata is hiring!  Come talk to me about cool geospatial / big data / public data work.
+
+---
+
+## The Ultimate Combo
+
+- Use the more efficient JTS `CoordinateSequence` APIs to extract ordinate values (x, y) instead of always relying on `Coordinate[]`
+- Store as a packed double array or packed floating point delta array
+- Binary representation that doesn't require deserialization
+
