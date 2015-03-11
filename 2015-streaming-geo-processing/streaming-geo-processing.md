@@ -198,7 +198,7 @@ A microservice for geo-region-coding
 
 ---
 
-## JTS
+## com.vividsolutions.jts
 
 - Basic geometry types (Point, Line, Polygon, etc.)
 - Geometry ops (intersection, contains, etc.)
@@ -262,6 +262,7 @@ NOTE: GeoTools is more of a higher level GIS toolkit.
 
 ## Memory Pressure
 
+- Memory rises as number of regions/shapes used goes up
 - Regularly monitoring memory usage
     + `Runtime.getRuntime.freeMemory`
     + Watch out! `maxMemory` is the currently allocated max, not -Xmx!
@@ -310,7 +311,11 @@ Cons:
 
 ## Partitioning
 
+<center>
 ![](partitioning-zip-codes.png)
+</center>
+
+Duplicate or clip geometries on edge...
 
 ---
 
@@ -348,7 +353,12 @@ Compression - trading absolute speed for more storage?
 
 ---
 
-### The JTS `Coordinate` object takes 40 bytes for storing two doubles!
+### Memory layout of a JTS Polygon
+
+![](jts-polygon.mermaid.png)
+<!-- .element: class="mermaid" -->
+
+The JTS `Coordinate` object takes 40 bytes for storing two doubles!
 
 ---
 
@@ -394,6 +404,7 @@ Compression - trading absolute speed for more storage?
 Not that hard:  https://gist.github.com/velvia/69ca1ab5e758d3b0ab13
 
 - For example, for small polygons, use delta encoding to store not doubles, but floats or ints
+- Save even more space over `PackedCoordinateSequence`
 
 ---
 
@@ -402,10 +413,10 @@ Not that hard:  https://gist.github.com/velvia/69ca1ab5e758d3b0ab13
 ![](spark-geo-partitioning.mermaid.png)
 <!-- .element: class="mermaid" -->
 
-1. Create an RDD of Points with a custom partitioning by geo region
-2. Geo-region-code
+* If you have big shapes -- Create an RDD of Points with a custom partitioning by geo region
+* If lots of points or uneven points -- Partition by points, use prev techniques to save memory
 
-If points are not partitioned evenly, perhaps partition by hash of (geo-region and other bucket).
+Have to choose partitioning strategy based on workload
 
 ---
 

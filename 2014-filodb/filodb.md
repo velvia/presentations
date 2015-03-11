@@ -160,7 +160,15 @@ NOTE: Databases have largely remained the same - even more modern, in-memory one
 
 - **Dataset**: a table with a schema
 - **Version**: each "diff" or incremental set of changes (appends / updates / deletes / new column).  Maps well to new slices of data or annotating existing records with new columns.
-- **Partition**: Divides and distributes the dataset. Allows parallel ingest.
+- **Partition**: Logically divides and distributes the dataset. Allows parallel ingest.
+
+---
+
+## Logical vs Physical Partitioning
+
+FiloDB lets the user logically partition their data.  Each partition is further sharded and distributed around the Cassandra ring.
+
+- No need to worry about hotspots around logical partitioning
 
 ---
 
