@@ -4,9 +4,76 @@
 
 ---
 
+## Problem Space
+
+- Need analytical database / queries on structured big data
+    + Something SQL-like, very flexible and fast
+    + Pre-aggregation too limiting
+- Fast data / constant updates
+    + How can I keep my queries from being stale?
+
+---
+
+## Parquet
+
+- Widely used, lots of support (Spark, Impala, etc.)
+- Problem: Parquet is read-optimized, not easy to use for writes
+    + Cannot support idempotent writes
+    + Optimized for writing very large chunks, not small updates
+    + No updates
+
+&nbsp;
+<p>
+People really want a database-like abstraction, not a file format!
+
+---
+
+## Solution: Lambda Architecture
+
+<center>
+![Lamba Architecture](lambda-architecture-2-800.jpg)
+</center>
+
+---
+
+## Implementing Lambda is Hard
+
+- Use real-time pipeline backed by a KV store for new updates
+- Lots of moving parts
+    +  Key-value store, real time sys, batch, etc.
+-  Need to run similar code in two places
+-  Need to reconcile queries against two different places
+
+---
+
+## Turns out this has been solved before!
+
+---
+
+## MPP Databases
+
+TODO: include picture of Vertica et al
+
+---
+
+## MPP Databases
+
+- Combines a write-optimized row store with a read-optimized columnar store for easy writes plus fast query times
+- Stonebraker, et. al. - CStore paper (Brown Univ)
+
+---
+
+## What's wrong with MPP Databases?
+
+- Closed source
+- $$$
+- Usually don't scale horizontally that well
+
+---
+
 ## What is <span class="golden">FiloDB</span>?
 
-#### A Distributed, versioned, columnar database for tabular datasets
+#### A Distributed, versioned, columnar database for fast OLAP
 #### Based on Apache Cassandra and Apache Spark
 
 ---
