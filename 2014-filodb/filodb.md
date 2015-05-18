@@ -14,6 +14,16 @@
 
 ---
 
+## Example: Video analytics
+
+- Typical collection and analysis of consumer events
+- 3 billion new events every day
+- Video publishers want updated stats, the sooner the better
+- Pre-aggregation only enables simple dashboard UIs
+- What if one wants to offer more advanced analysis, or a generic data query API?
+
+---
+
 ## Parquet
 
 - Widely used, lots of support (Spark, Impala, etc.)
@@ -21,10 +31,28 @@
     + Cannot support idempotent writes
     + Optimized for writing very large chunks, not small updates
     + No updates
+    + Often needs multiple passes of jobs for compaction of small files, deduplication, etc.
 
 &nbsp;
 <p>
 People really want a database-like abstraction, not a file format!
+
+---
+
+## Ok, open source database
+
+- PostGres: write-optimized, OK for analytics, not scalable
+- Cassandra: write-optimized, simple queries only
+- HBase: can integrate with MapReduce, but not optimized for fast complex queries
+
+---
+
+## Solution: Move data to warehouse
+
+Example: Cassandra for writes, export to Redshift / Parquet / etc.
+
+- Data in warehouse not as fresh as data in Cassandra
+- Couple systems to manage, could it be any easier?
 
 ---
 
@@ -42,24 +70,30 @@ People really want a database-like abstraction, not a file format!
 - Lots of moving parts
     +  Key-value store, real time sys, batch, etc.
 -  Need to run similar code in two places
+-  Still need to deal with ingesting data to Parquet/HDFS
 -  Need to reconcile queries against two different places
 
 ---
 
 ## Turns out this has been solved before!
 
+<center>
+![Vertica](HPVertica.png)
+![Greenplum](Greenplum.png)
+</center>
+
+Even [Facebook uses Vertica](http://www.vertica.com/?s=mpp+database).
+
 ---
 
 ## MPP Databases
 
-TODO: include picture of Vertica et al
+<center>
+![](CStoreArchitecture.png)
+</center>
 
----
-
-## MPP Databases
-
-- Combines a write-optimized row store with a read-optimized columnar store for easy writes plus fast query times
-- Stonebraker, et. al. - CStore paper (Brown Univ)
+- Easy writes plus fast queries, with constant transfers
+- Stonebraker, et. al. - [CStore](https://cs.brown.edu/courses/cs227/archives/2008/mitchpapers/required4.pdf) paper (Brown Univ)
 
 ---
 
@@ -75,6 +109,7 @@ TODO: include picture of Vertica et al
 
 #### A Distributed, versioned, columnar database for fast OLAP
 #### Based on Apache Cassandra and Apache Spark
+#### [Open source](http://github.com/velvia/FiloDB)!
 
 ---
 
@@ -91,6 +126,7 @@ Rich sweet layers of distributed, versioned database goodness
 ## Distributed
 
 Apache Cassandra.  Scale out with no SPOF.  Cross-datacenter replication.
+Proven storage and database technology.
 
 ---
 
@@ -118,6 +154,8 @@ SELECT first, last, age FROM customers
   WHERE _version > 3 AND age < 40 LIMIT 100
 ```
 
+Tight integration with the fast performance and complex analytics of Apache Spark, the fastest growing compute engine in big data.
+
 ---
 
 ## Think of <span class="golden">FiloDB</span> as
@@ -139,9 +177,10 @@ NOTE: Traditional databases are a poor match for modern streaming, incremental w
 ## OLAP Performance without the Pain
 
 - Really fast Spark SQL queries on Cassandra
+    - Combine easy writes with fast reads
     + No need to set up HDFS/Hadoop for analytical workloads
-- Add new columns really cheaply.  Change the schema with new versions.
 - Idempotent writes - no need for deduplication jobs in HDFS
+- Add new columns really cheaply.  Change the schema with new versions.
 
 ---
 
