@@ -62,6 +62,8 @@ Example: Cassandra for writes, export to Redshift / Parquet / etc.
 ![Lamba Architecture](lambda-architecture-2-800.jpg)
 </center>
 
+(https://www.mapr.com/developercentral/lambda-architecture)
+
 ---
 
 ## Implementing Lambda is Hard
@@ -93,6 +95,7 @@ Even [Facebook uses Vertica](http://www.vertica.com/?s=mpp+database).
 </center>
 
 - Easy writes plus fast queries, with constant transfers
+- Automatic query optimization by storing intermediate query projections
 - Stonebraker, et. al. - [CStore](https://cs.brown.edu/courses/cs227/archives/2008/mitchpapers/required4.pdf) paper (Brown Univ)
 
 ---
