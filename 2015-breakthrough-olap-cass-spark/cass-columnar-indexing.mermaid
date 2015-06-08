@@ -1,0 +1,5 @@
+graph LR;
+U(User)-- Inserts -->C(Cassandra Table);
+C-- Indexer -->CS(Column store);
+CS-- Columnar chunks -->S(Spark RDD);
+
