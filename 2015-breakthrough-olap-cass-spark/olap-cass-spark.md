@@ -54,7 +54,7 @@ NOTE: Too many possible combinations to pre-aggregate
 - Scalable - rules out PostGreSQL, etc.
 - Easy to update and ingest new data
     + Not traditional OLAP cubes - that's not what I'm talking about
-- Very fast for massive amounts of data
+- Very fast for analytical queries - OLAP not OLTP
 - Extremely flexible queries
 - Preferably open source
 
@@ -294,7 +294,7 @@ Tachyon solves the HA problem, but not the I/O problem, and will involve writing
 
 <p>&nbsp;<p>
 
-Are we really thinking holistically about data modelling, caching, and how it affects the entire systems architecture?
+Are we really thinking holistically about data modelling, caching, and how it affects the entire systems architecture?<!-- .element: class="fragment roll-in" -->
 
 ---
 
@@ -601,9 +601,13 @@ Tight integration with the fast performance and complex analytics of Apache Spar
 
 ## Current Status
 
----
+Pre-alpha.  What is here is more intended to show what is possible with columnar storage on Cassandra combined with Spark, and gather feedback.
 
-## Where to go in future
+- Append-only and CSV ingest only
+- Working Spark SQL input source
+- Keyed by partition and row number only
+- Only int, double, long, and string types
+- Localhost only - no locality in Spark input source
 
 ---
 
