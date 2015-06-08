@@ -210,7 +210,9 @@ sqlContext.sql("SELECT count(monthyear) FROM gdelt2").show()
 
 --
 
-## How Spark DataFrame's Table Caching Works
+## How Spark SQL's Table Caching Works
+
+![](spark-sql-caching-details.jpg)
 
 ---
 
