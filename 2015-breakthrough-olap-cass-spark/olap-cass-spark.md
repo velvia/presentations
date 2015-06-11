@@ -15,7 +15,8 @@
 - Principal Engineer, [Socrata, Inc.](http://www.socrata.com)
 - @evanfchan
 - [`http://github.com/velvia`](http://github.com/velvia)
-- Creator of [Spark Job Server](http://github.com/spark-jobserver/spark-jobserver)
+- User and contributor to Spark since 0.9
+- Co-creator and maintainer of [Spark Job Server](http://github.com/spark-jobserver/spark-jobserver)
 
 ---
 
@@ -464,13 +465,25 @@ First 4 million rows, first 20 columns, localhost, SSD, C* 2.0.9, LZ4 compressio
 | Scenario       | Ingest   | Read all columns | Read one column |
 | :------------- | -------: | ---------------: | --------------: |
 | Narrow table   | 380 sec  | 203 sec          | 163 sec         |
-| Wide table     | 886 sec  | 524 sec          | 493 sec         |
+| Wide table     | 886 sec  | 320 sec          | 298 sec         |
 | Columnar       |  47 sec  |   4 sec          | 0.23 sec        |
 
 &nbsp;<p>
-On reads, using a columnar format is up to **2100x** faster!!
+On reads, using a columnar format is up to **1300x** faster!!
 
-- Of course, real life perf gains will depend heavily on query, table wide, etc. etc.
+- Of course, real life perf gains will depend heavily on query, table width, etc. etc.
+
+--
+
+## Disk space usage
+
+| Scenario       | MB used   |
+| :------------- | --------: |
+| Narrow table   | 900   |
+| Wide table     | 326   |
+| Columnar       |  57   |
+
+The disk space usage helps explain some of the numbers.
 
 ---
 
