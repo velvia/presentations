@@ -521,7 +521,7 @@ This Scala loop can read integers from a binary Filo blob at a rate of **2 billi
 
 ## Vectorization of Spark Queries
 
-The Tungsten project.
+The [Tungsten](https://databricks.com/blog/2015/04/28/project-tungsten-bringing-spark-closer-to-bare-metal.html) project.
 
 Process many elements from the same column at once, keep data in L1/L2 cache.
 
