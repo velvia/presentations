@@ -6,6 +6,10 @@
 
 ---
 
+![](CassSummit2015.png)
+
+---
+
 ## Who am I?
 
 <center>
@@ -15,7 +19,7 @@
 - Principal Engineer, [Socrata, Inc.](http://www.socrata.com)
 - @evanfchan
 - [`http://github.com/velvia`](http://github.com/velvia)
-- User and contributor to Spark since 0.9
+- User and contributor to Spark since 0.9, Cassandra since 0.6
 - Co-creator and maintainer of [Spark Job Server](http://github.com/spark-jobserver/spark-jobserver)
 
 ---
