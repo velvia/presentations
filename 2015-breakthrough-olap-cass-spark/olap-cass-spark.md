@@ -223,14 +223,16 @@ sqlContext.sql("SELECT count(monthyear) FROM gdelt2").show()
 
 ## Spark Cached Tables can be Really Fast
 
-GDELT dataset, 4 million rows, first 20 columns*, localhost
+GDELT dataset, 4 million rows, 60 columns, localhost
 
 | Method   |  secs       |
 | :------- | ----------: |
-| Uncached |   232       |
-| Cached   |    0.9      |
+| Uncached |   317       |
+| Cached   |    0.38     |
 
 <p>&nbsp;<p>
+Almost a 1000x speedup!
+<p>
 
 On an 8-node EC2 c3.XL cluster, 117 million rows, can run common queries 1-2 seconds against cached dataset.
 
@@ -449,7 +451,7 @@ http://github.com/velvia/cassandra-gdelt
 
 - [Global Database of Events, Language, and Tone](http://gdeltproject.org)
     + 1979 to now
-- 55 columns, 250 million+ rows, 250GB+
+- 60 columns, 250 million+ rows, 250GB+
 - Let's compare Cassandra I/O only, no caching or Spark
 
 --
@@ -529,7 +531,7 @@ The [Tungsten](https://databricks.com/blog/2015/04/28/project-tungsten-bringing-
 
 Process many elements from the same column at once, keep data in L1/L2 cache.
 
-Coming perhaps in Spark 1.6.
+Coming in Spark 1.4 through 1.6
 
 ---
 
@@ -616,6 +618,15 @@ Tight integration with the fast performance and complex analytics of Apache Spar
 
 ---
 
+## Where FiloDB Fits In
+
+- Use regular C* denormalized tables for predictable low-latency queries
+- Use FiloDB for the remaining ad-hoc or more complex analytical queries
+- Simplify your analytics infrastructure!
+    - No need to export to Hadoop/Parquet/data warehouse.  Use Spark and C* for both OLAP and OLTP!
+
+---
+
 ## Current Status
 
 Pre-alpha.  What is here is more intended to show what is possible with columnar storage on Cassandra combined with Spark, and gather feedback.
@@ -653,6 +664,8 @@ to the entire OSS community, but in particular:
 ---
 
 # DEMO TIME
+
+### GDELT: Regular C* Tables vs FiloDB
 
 ---
 
