@@ -238,6 +238,16 @@ On an 8-node EC2 c3.XL cluster, 117 million rows, can run common queries 1-2 sec
 
 --
 
+## Tuning Connector Partitioning
+
+#### spark.cassandra.input.split.size
+
+Guideline: One split per partition, one partition per CPU core
+
+- Much more parallelism won't speed up job much, but will starve other C* requests
+
+--
+
 ## Lesson #1: Take Advantage of Spark Caching!
 
 ---
