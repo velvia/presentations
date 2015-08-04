@@ -2,11 +2,7 @@
 # <span class="cassred">Cassandra</span> and Spark
 
 ### Evan Chan
-### June 2015
-
----
-
-![](CassSummit2015.png)
+### August 2015
 
 ---
 
@@ -16,12 +12,11 @@
 ![](home.jpg)
 </center>
 
-- Principal Engineer, [Socrata, Inc.](http://www.socrata.com)
+- Distinguished Engineer, [TupleJump](http://www.tuplejump.com)
 - @evanfchan
-- [`http://github.com/velvia`](http://github.com/velvia)
+- [`http://velvia.github.io`](http://velvia.github.io)
 - User and contributor to Spark since 0.9, Cassandra since 0.6
 - Co-creator and maintainer of [Spark Job Server](http://github.com/spark-jobserver/spark-jobserver)
-- Spark Summit and Strata PMC Member
 
 ---
 
@@ -72,7 +67,7 @@ NOTE: Too many possible combinations to pre-aggregate
 - Problem: Parquet is read-optimized, not easy to use for writes
     + Cannot support idempotent writes
     + Optimized for writing very large chunks, not small updates
-    + No updates
+    + Not suitable for time series, IoT, etc.
     + Often needs multiple passes of jobs for compaction of small files, deduplication, etc.
 
 &nbsp;
@@ -121,7 +116,7 @@ Even [Facebook uses Vertica](http://www.vertica.com/?s=mpp+database).
 - Horizontally scalable
 - Very flexible data modelling (lists, sets, custom data types)
 - Easy to operate
-- No fear of number of rows or documents
+- Perfect for ingestion of real time / machine data
 - Best of breed storage technology, huge community
 - **BUT: Simple queries only**
 - **OLTP-oriented**
@@ -473,7 +468,7 @@ http://github.com/velvia/cassandra-gdelt
 2. Wide table - wide rows with 10,000 logical rows per partition key
 3. Columnar layout - 1000 rows per columnar chunk, wide rows, with dictionary compression
 
-First 4 million rows, first 20 columns, localhost, SSD, C* 2.0.9, LZ4 compression
+First 4 million rows, localhost, SSD, C* 2.0.9, LZ4 compression.  Compaction performed before read benchmarks.
 
 --
 
@@ -481,12 +476,12 @@ First 4 million rows, first 20 columns, localhost, SSD, C* 2.0.9, LZ4 compressio
 
 | Scenario       | Ingest   | Read all columns | Read one column |
 | :------------- | -------: | ---------------: | --------------: |
-| Narrow table   | 380 sec  | 203 sec          | 163 sec         |
-| Wide table     | 886 sec  | 320 sec          | 298 sec         |
-| Columnar       |  47 sec  |   4 sec          | 0.23 sec        |
+| Narrow table   | 1927 sec | 505 sec          | 504 sec         |
+| Wide table     | 3897 sec | 365 sec          | 351 sec         |
+| Columnar       |  93 sec  |   8.6 sec        | 0.23 sec        |
 
 &nbsp;<p>
-On reads, using a columnar format is up to **1300x** faster!!
+On reads, using a columnar format is up to **2190x** faster, while ingestion is 20-40x faster.
 
 - Of course, real life perf gains will depend heavily on query, table width, etc. etc.
 
@@ -494,11 +489,11 @@ On reads, using a columnar format is up to **1300x** faster!!
 
 ## Disk space usage
 
-| Scenario       | MB used   |
+| Scenario       | Disk used |
 | :------------- | --------: |
-| Narrow table   | 900   |
-| Wide table     | 326   |
-| Columnar       |  57   |
+| Narrow table   | 2.7 GB   |
+| Wide table     | 1.6 GB   |
+| Columnar       | 0.34 GB  |
 
 The disk space usage helps explain some of the numbers.
 
