@@ -591,6 +591,18 @@ Stream out new versions as continuous queries :)
 
 ---
 
+## 100% Reactive
+
+Built completely on the Typesafe Platform:
+
+- Scala 2.10 and SBT
+- Akka Actors for rational scale-out concurrency
+- Futures for I/O
+- Phantom Cassandra client for reactive, type-safe C* I/O
+- Typesafe Config
+
+---
+
 ## Spark SQL Queries!
 
 ```sql
@@ -599,6 +611,14 @@ SELECT first, last, age FROM customers
 ```
 
 Tight integration with the fast performance and complex analytics of Apache Spark, the fastest growing compute engine in big data.
+
+---
+
+## Easy Ingestion from Spark Dataframes
+
+---
+
+## Parquet Performance on Cassandra
 
 ---
 
@@ -614,16 +634,6 @@ Tight integration with the fast performance and complex analytics of Apache Spar
 
 ---
 
-## Automatic Columnar Conversion using Custom Indexes
-
-![](cass-columnar-indexing.mermaid.png)
-<!-- .element: class="mermaid" -->
-
-- Write to Cassandra as you normally do
-- Custom indexer takes changes, merges and compacts into columnar chunks behind scenes
-
----
-
 ## Where FiloDB Fits In
 
 - Use regular C* denormalized tables for predictable low-latency queries
@@ -633,15 +643,23 @@ Tight integration with the fast performance and complex analytics of Apache Spar
 
 ---
 
-## Current Status
+## Simplify your Lambda Architecture...
 
-Pre-alpha.  What is here is more intended to show what is possible with columnar storage on Cassandra combined with Spark, and gather feedback.
+<center>
+![Lamba Architecture](lambda-architecture-2-800.jpg)
+</center>
 
-- Append-only and CSV ingest only
-- Working Spark SQL input source
-- Keyed by partition and row number only
-- Only int, double, long, and string types
-- Localhost only - no locality in Spark input source
+(https://www.mapr.com/developercentral/lambda-architecture)
+
+---
+
+## With Spark, Cassandra, and FiloDB
+
+![](simple-architecture.mermaid.png)
+<!-- .element: class="mermaid" -->
+
+- Ma, where did all the components go?
+- You mean I don't have to deal with Hadoop?
 
 ---
 
@@ -686,13 +704,13 @@ Note: Both traditional RDBMS and OLAP are very expensive to scale, take longer a
 
 ---
 
-## Solution: Lambda Architecture
+## Automatic Columnar Conversion using Custom Indexes
 
-<center>
-![Lamba Architecture](lambda-architecture-2-800.jpg)
-</center>
+![](cass-columnar-indexing.mermaid.png)
+<!-- .element: class="mermaid" -->
 
-(https://www.mapr.com/developercentral/lambda-architecture)
+- Write to Cassandra as you normally do
+- Custom indexer takes changes, merges and compacts into columnar chunks behind scenes
 
 ---
 
