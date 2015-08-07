@@ -614,23 +614,16 @@ Tight integration with the fast performance and complex analytics of Apache Spar
 
 ---
 
-## Easy Ingestion from Spark Dataframes
+## FiloDB vs Parquet
 
----
-
-## Parquet Performance on Cassandra
-
----
-
-## Exactly-Once Ingestion from Kafka
-
-![](kafka-cass-columnar.mermaid.png)
-<!-- .element: class="mermaid" -->
-
-- New rows appended via Kafka
-- Writes are *idempotent* - no need to dedup!
-- Converted to columnar chunks on ingest and stored in C*
-- Only necessary columnar chunks are read into Spark for minimal I/O
+* Comparable read performance - with lots of space to improve
+  - Assuming co-located Spark and Cassandra
+  - On localhost, both subsecond for simple queries (GDELT 1979-1984)
+  - FiloDB has more room to grow - due to hot column caching and much less deserialization overhead
+* Lower memory requirement due to much smaller block sizes
+* Much better fit for IoT / Machine / Time-series applications
+* Limited support for types
+  - array / set / map support not there, but will be added later
 
 ---
 
@@ -640,6 +633,7 @@ Tight integration with the fast performance and complex analytics of Apache Spar
 - Use FiloDB for the remaining ad-hoc or more complex analytical queries
 - Simplify your analytics infrastructure!
     - No need to export to Hadoop/Parquet/data warehouse.  Use Spark and C* for both OLAP and OLTP!
+- Perform ad-hoc OLAP analysis of your time-series, IoT data
 
 ---
 
@@ -660,6 +654,19 @@ Tight integration with the fast performance and complex analytics of Apache Spar
 
 - Ma, where did all the components go?
 - You mean I don't have to deal with Hadoop?
+- Use Cassandra as a front end to store IoT data first
+
+---
+
+## Exactly-Once Ingestion from Kafka
+
+![](kafka-cass-columnar.mermaid.png)
+<!-- .element: class="mermaid" -->
+
+- New rows appended via Kafka
+- Writes are *idempotent* - no need to dedup!
+- Converted to columnar chunks on ingest and stored in C*
+- Only necessary columnar chunks are read into Spark for minimal I/O
 
 ---
 
