@@ -166,7 +166,7 @@ Even [Facebook uses Vertica](http://www.vertica.com/?s=mpp+database).
 - In-memory columnar store
 - Parquet, Json, Cassandra connector, Avro, many more
 - SQL as well as DataFrames (Pandas-style) API
-- No indexes (but Cassandra's connector can use C* secondary indexes!)
+- Indexing integrated into data sources (eg C* secondary indexes)
 - Write custom functions in Scala ....  take that Hive UDFs!!
 - Integrates well with MLBase, Scala/Java/Python
 
@@ -184,7 +184,7 @@ Get started in one line with `spark-shell`!
 
 ```bash
 bin/spark-shell \
-  --packages com.datastax.spark:spark-cassandra-connector_2.10:1.3.0-M1 \
+  --packages com.datastax.spark:spark-cassandra-connector_2.10:1.4.0-M3 \
   --conf spark.cassandra.connection.host=127.0.0.1
 ```
 
@@ -192,17 +192,19 @@ bin/spark-shell \
 
 ## Caching a SQL Table from Cassandra
 
-DataFrames support in Cassandra Connector 1.3.0-M1:
+DataFrames support in Cassandra Connector 1.4.0 (and 1.3.0):
 
 <p>
 ```scala
 val sqlContext = new org.apache.spark.sql.SQLContext(sc)
 
-val df = sqlContext.load("org.apache.spark.sql.cassandra",
-           options = Map( "c_table" -> "gdelt2", "keyspace" -> "test"))
-df.registerTempTable("gdelt2")
-sqlContext.cacheTable("gdelt2")
-sqlContext.sql("SELECT count(monthyear) FROM gdelt2").show()
+val df = sqlContext.read
+                   .format("org.apache.spark.sql.cassandra")
+                   .options(Map("table" -> "gdelt", "keyspace" -> "test"))
+                   .load()
+df.registerTempTable("gdelt")
+sqlContext.cacheTable("gdelt")
+sqlContext.sql("SELECT count(monthyear) FROM gdelt").show()
 ```
 
 <p>&nbsp;<p>
