@@ -20,9 +20,9 @@
 
 ---
 
-## About TupleJump
+## About Tuplejump
 
-[TupleJump](http://tuplejump.com) is a big data technology leader providing solutions for rapid insights from data.
+[Tuplejump](http://tuplejump.com) is a big data technology leader providing solutions for rapid insights from data.
 
 * [Calliope](http://tuplejump.github.io/calliope/) - the first Spark-Cassandra integration
 * [Stargate](http://tuplejump.github.io/stargate/) - an open source Lucene indexer for Cassandra
@@ -185,7 +185,7 @@ Even [Facebook uses Vertica](http://www.vertica.com/?s=mpp+database).
 ## Connecting Spark to Cassandra
 
 - Datastax's [Spark Cassandra Connector](https://github.com/datastax/spark-cassandra-connector)
-- TupleJump [Calliope](http://tuplejump.github.io/calliope/)
+- Tuplejump [Calliope](http://tuplejump.github.io/calliope/)
 
 <p>&nbsp;
 <center>
@@ -697,7 +697,7 @@ to the entire OSS community, but in particular:
 </center>
 
 - Lee Mighdoll, Nest/Google
-- Rohit Rai and Satya B., TupleJump
+- Rohit Rai and Satya B., Tuplejump
 - My colleagues at Socrata
 
 <p>&nbsp;</p>
