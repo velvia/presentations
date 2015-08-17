@@ -608,6 +608,7 @@ Stream out new versions as continuous queries :)
 Built completely on the Typesafe Platform:
 
 - Scala 2.10 and SBT
+- Spark (including custom data source)
 - Akka Actors for rational scale-out concurrency
 - Futures for I/O
 - Phantom Cassandra client for reactive, type-safe C* I/O
@@ -622,7 +623,8 @@ SELECT first, last, age FROM customers
   WHERE _version > 3 AND age < 40 LIMIT 100
 ```
 
-Tight integration with the fast performance and complex analytics of Apache Spark, the fastest growing compute engine in big data.
+- Read to and write from Spark Dataframes
+- Append/merge to FiloDB table from Spark Streaming
 
 ---
 
