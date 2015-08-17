@@ -298,8 +298,9 @@ NOTE: the DataFrames support in connector 1.3.0-M1 doesn't seem to support predi
 
 ## Intro to Tachyon
 
-- Tachyon: an in-memory cache for HDFS and other data sources
+- Tachyon: an in-memory cache for HDFS and other binary data sources
 - Keeps data off-heap, so multiple Spark applications/executors can share data
+- Solves HA problem for data
 
 --
 
@@ -310,7 +311,9 @@ What am I caching exactly?  Tachyon is designed for caching files or binary blob
 - A serialized form of `CassandraRow/CassandraRDD`?
 - Raw output from Cassandra driver?
 
-Tachyon solves the HA problem, but not the I/O problem, and will involve writing tons of new code.
+What you really want is this:
+
+Cassandra SSTable -> Tachyon (as row cache) -> CQL -> Spark
 
 ---
 
@@ -320,6 +323,8 @@ Tachyon solves the HA problem, but not the I/O problem, and will involve writing
 <p>&nbsp;<p>
 
 Are we really thinking holistically about data modelling, caching, and how it affects the entire systems architecture?<!-- .element: class="fragment roll-in" -->
+
+NOTE: each subsystem or project thinks about its own part only
 
 ---
 
@@ -643,7 +648,7 @@ SELECT first, last, age FROM customers
 
 ## Where FiloDB Fits In
 
-- Use regular C* denormalized tables for predictable low-latency queries
+- Use regular C* denormalized tables for OLTP and single-key lookups
 - Use FiloDB for the remaining ad-hoc or more complex analytical queries
 - Simplify your analytics infrastructure!
     - No need to export to Hadoop/Parquet/data warehouse.  Use Spark and C* for both OLAP and OLTP!
