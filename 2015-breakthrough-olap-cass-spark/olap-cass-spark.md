@@ -2,7 +2,7 @@
 # <span class="cassred">Cassandra</span> and Spark
 
 ### Evan Chan
-### August 2015
+### September 2015
 
 ---
 
@@ -86,37 +86,6 @@ People really want a database-like abstraction, not a file format!
 
 ---
 
-## Turns out this has been solved before!
-
-<center>
-![Vertica](HPVertica.png)
-![Greenplum](Greenplum.png)
-</center>
-
-Even [Facebook uses Vertica](http://www.vertica.com/?s=mpp+database).
-
---
-
-## MPP Databases
-
-<center>
-![](CStoreArchitecture.png)
-</center>
-
-- Easy writes plus fast queries, with constant transfers
-- Automatic query optimization by storing intermediate query projections
-- Stonebraker, et. al. - [CStore](https://cs.brown.edu/courses/cs227/archives/2008/mitchpapers/required4.pdf) paper (Brown Univ)
-
---
-
-## What's wrong with MPP Databases?
-
-- Closed source
-- $$$
-- Usually don't scale horizontally that well (or cost is prohibitive)
-
----
-
 ## <span class="cassred">Cassandra</span>
 
 <center>
@@ -148,55 +117,41 @@ Even [Facebook uses Vertica](http://www.vertica.com/?s=mpp+database).
 
 ## Spark provides the missing fast, deep analytics piece of <span class="cassred">Cassandra</span>!
 
----
-
-## Spark and <span class="cassred">Cassandra</span>
-## OLAP Architectures
+### ...tying together fast event ingestion and rich deep analytics!
 
 ---
 
-## Separate Storage and Query Layers
+## How to make Spark and <span class="cassred">Cassandra</span>
+## Go Fast
 
-- Combine best of breed storage and query platforms
-- Take full advantage of evolution of each
-- Storage handles replication for availability
-- Query can replicate data for scaling read concurrency - *independent!*
+---
+
+## Spark on <span class="cassred">Cassandra</span>: No Caching
+
+--
+
+## Not Very Fast, but Real-Time Updates
+
+- Spark does no caching by default - you will always be reading from C*!
+- Pros:
+  + No need to fit all data in memory
+  + Always get the latest data
+- Cons:
+  + Pretty slow for ad hoc analytical queries - using regular CQL tables
+
+--
+
+## How to go Faster?
+
+- Read less data
+- Do less I/O
+- Make your computations faster
 
 ---
 
 ## Spark as Cassandra's Cache
 
 ![](2014-07-spark-cass-cache.jpg)
-
---
-
-## Spark SQL
-
-- Appeared with Spark 1.0
-- In-memory columnar store
-- Parquet, Json, Cassandra connector, Avro, many more
-- SQL as well as DataFrames (Pandas-style) API
-- Indexing integrated into data sources (eg C* secondary indexes)
-- Write custom functions in Scala ....  take that Hive UDFs!!
-- Integrates well with MLBase, Scala/Java/Python
-
---
-
-## Connecting Spark to Cassandra
-
-- Datastax's [Spark Cassandra Connector](https://github.com/datastax/spark-cassandra-connector)
-- Tuplejump [Calliope](http://tuplejump.github.io/calliope/)
-
-<p>&nbsp;
-<center>
-Get started in one line with `spark-shell`!
-</center>
-
-```bash
-bin/spark-shell \
-  --packages com.datastax.spark:spark-cassandra-connector_2.10:1.4.0-M3 \
-  --conf spark.cassandra.connection.host=127.0.0.1
-```
 
 --
 
@@ -210,8 +165,8 @@ val sqlContext = new org.apache.spark.sql.SQLContext(sc)
 
 val df = sqlContext.read
                    .format("org.apache.spark.sql.cassandra")
-                   .options(Map("table" -> "gdelt", "keyspace" -> "test"))
-                   .load()
+                   .option("table", "gdelt")
+                   .option("keyspace", "test").load()
 df.registerTempTable("gdelt")
 sqlContext.cacheTable("gdelt")
 sqlContext.sql("SELECT count(monthyear) FROM gdelt").show()
@@ -219,7 +174,7 @@ sqlContext.sql("SELECT count(monthyear) FROM gdelt").show()
 
 <p>&nbsp;<p>
 
-- Spark does no caching by default - you will always be reading from C*!
+NOTE: go over it real fast, 30 sec max, just highlight the cacheTable line
 
 --
 
@@ -227,7 +182,7 @@ sqlContext.sql("SELECT count(monthyear) FROM gdelt").show()
 
 ![](spark-sql-caching-details.jpg)
 
----
+--
 
 ## Spark Cached Tables can be Really Fast
 
@@ -245,20 +200,6 @@ Almost a 1000x speedup!
 On an 8-node EC2 c3.XL cluster, 117 million rows, can run common queries 1-2 seconds against cached dataset.
 
 --
-
-## Tuning Connector Partitioning
-
-#### spark.cassandra.input.split.size
-
-Guideline: One split per partition, one partition per CPU core
-
-- Much more parallelism won't speed up job much, but will starve other C* requests
-
---
-
-## Lesson #1: Take Advantage of Spark Caching!
-
----
 
 ## Problems with Cached Tables
 
@@ -278,57 +219,9 @@ If you don't have enough RAM, Spark can cache your tables partly to disk.  This 
 
 Also: `rdd.cache()` is NOT the same as SQLContext's `cacheTable`!
 
---
-
-## What about C* Secondary Indexing?
-
-Spark-Cassandra Connector and Calliope can both reduce I/O by using Cassandra secondary indices.  Does this work with caching?
-
-No, not really, because only the filtered rows would be cached.  Subsequent queries against this limited cached table would not give you expected results.
-
-NOTE: the DataFrames support in connector 1.3.0-M1 doesn't seem to support predicate pushdown.
-
 ---
 
-## Tachyon Off-Heap Caching
-
-![](2014-07-spark-cass-tachyon.jpg)
-
---
-
-## Intro to Tachyon
-
-- Tachyon: an in-memory cache for HDFS and other binary data sources
-- Keeps data off-heap, so multiple Spark applications/executors can share data
-- Solves HA problem for data
-
---
-
-## Wait, wait, wait!
-
-What am I caching exactly?  Tachyon is designed for caching files or binary blobs.
-
-- A serialized form of `CassandraRow/CassandraRDD`?
-- Raw output from Cassandra driver?
-
-What you really want is this:
-
-Cassandra SSTable -> Tachyon (as row cache) -> CQL -> Spark
-
----
-
-> Bad programmers worry about the code. Good programmers worry about data structures. <br>
-  - Linus Torvalds
-
-<p>&nbsp;<p>
-
-Are we really thinking holistically about data modelling, caching, and how it affects the entire systems architecture?<!-- .element: class="fragment roll-in" -->
-
-NOTE: each subsystem or project thinks about its own part only
-
----
-
-## Efficient Columnar Storage in Cassandra
+## Faster Queries Through Columnar Storage
 
 ### Wait, I thought Cassandra was columnar?
 
@@ -378,7 +271,7 @@ NOTE: Cassandra is only columnar in the sense it permits wide rows, or clusterin
 
 --
 
-## Columnar Storage (Memory)
+## Columnar Storage
 
 **Name column**
 
@@ -396,28 +289,6 @@ Dictionary: {0: "Barak", 1: "Hillary"}
 | 46 | 66 |
 
 NOTE: data from each column is stored together.
-
---
-
-## Columnar Storage (Cassandra)
-
-Review: each physical row in Cassandra (e.g. a "partition key") stores its columns together on disk.
-
-<p>&nbsp;<p>
-Schema CF
-
-| Rowkey    |  Type  |
-| :-------- | :----- |
-| Name      |  StringDict |
-| Age       |  Int   |
-
-<p>&nbsp;<p>
-Data CF
-
-| Rowkey    |  0 |  1 |
-| :-------- | -- | -- |
-| Name      | 0  |  1 |
-| Age       | 46 | 66 |
 
 --
 
@@ -461,6 +332,161 @@ NOTE: Simply put, it's a lot of work!
 
 ---
 
+## Introducing <span class="golden">FiloDB</span>
+
+<center>
+Distributed. Versioned. Columnar. Built for Streaming.
+</center>
+
+---
+
+## FiloDB - What?
+
+--
+
+## Distributed
+
+Apache Cassandra.  Scale out with no SPOF.  Cross-datacenter replication.
+Proven storage and database technology.
+
+--
+
+## Versioned
+
+Incrementally add a column or a few rows as a new version.  Easily control what versions to query.  Roll back changes inexpensively.
+
+Stream out new versions as continuous queries :)
+
+--
+
+## Columnar
+
+- Parquet-style storage layout
+- Retrieve select columns and minimize I/O for OLAP queries
+- Add a new column without having to copy the whole table
+- Vectorization and lazy/zero serialization for extreme efficiency
+
+--
+
+## What's in the name?
+
+<center>
+![Filo dough](Filo.jpg)
+</center>
+
+Rich sweet layers of distributed, versioned database goodness
+
+--
+
+## 100% Reactive
+
+Built completely on the Typesafe Platform:
+
+- Scala 2.10 and SBT
+- Spark (including custom data source)
+- Akka Actors for rational scale-out concurrency
+- Futures for I/O
+- Phantom Cassandra client for reactive, type-safe C* I/O
+- Typesafe Config
+
+--
+
+## Spark SQL Queries!
+
+```sql
+SELECT first, last, age FROM customers
+  WHERE _version > 3 AND age < 40 LIMIT 100
+```
+
+- Read to and write from Spark Dataframes
+- Append/merge to FiloDB table from Spark Streaming
+- Use Tableau or any other JDBC tool
+
+---
+
+## FiloDB - Why?
+
+--
+
+## Exactly-Once Event/Time-Series Ingestion
+
+![](kafka-cass-columnar.mermaid.png)
+<!-- .element: class="mermaid" -->
+
+- New rows appended via Kafka
+- Writes are *idempotent* - no need to dedup!
+- Converted to columnar chunks on ingest and stored in C*
+- Only necessary columnar chunks are read into Spark for minimal I/O
+
+--
+
+## Analytical Query Performance
+
+### See the demo later!
+
+--
+
+## Time-series Performance Comparison
+
+--
+
+## FiloDB vs Parquet
+
+* Comparable read performance - with lots of space to improve
+  - Assuming co-located Spark and Cassandra
+  - On localhost, both subsecond for simple queries (GDELT 1979-1984)
+  - FiloDB has more room to grow - due to hot column caching and much less deserialization overhead
+* Lower memory requirement due to much smaller block sizes
+* Much better fit for IoT / Machine / Time-series applications
+  - Idempotent writes by PK with no deduplication
+* Limited support for types
+  - array / set / map support not there, but will be added
+
+--
+
+## Where FiloDB Fits In
+
+- Use regular C* denormalized tables for OLTP and single-key lookups
+- Use FiloDB for the remaining ad-hoc or more complex analytical queries
+- Simplify your analytics infrastructure!
+    - No need to export to Hadoop/Parquet/data warehouse.  Use Spark and C* for both OLAP and OLTP!
+- Perform ad-hoc OLAP analysis of your time-series, IoT data
+
+--
+
+## Simplify your Lambda Architecture...
+
+<center>
+![Lamba Architecture](lambda-architecture-2-800.jpg)
+</center>
+
+(https://www.mapr.com/developercentral/lambda-architecture)
+
+--
+
+## With Spark, Cassandra, and FiloDB
+
+![](simple-architecture.mermaid.png)
+<!-- .element: class="mermaid" -->
+
+- Ma, where did all the components go?
+- You mean I don't have to deal with Hadoop?
+- Use Cassandra as a front end to store IoT data first
+
+---
+
+## FiloDB - How?
+
+--
+
+## FiloDB Architecture
+
+<center>
+![](http://velvia.github.io/images/filodb_architecture.png)
+</center>
+
+--
+
 ## Columnar Storage Performance Study
 
 <p>&nbsp;</p>
@@ -468,11 +494,7 @@ NOTE: Simply put, it's a lot of work!
 http://github.com/velvia/cassandra-gdelt
 </center>
 
---
-
-## GDELT Dataset
-
-- [Global Database of Events, Language, and Tone](http://gdeltproject.org)
+- [Global Database of Events, Language, and Tone](http://gdeltproject.org) dataset
     + 1979 to now
 - 60 columns, 250 million+ rows, 250GB+
 - Let's compare Cassandra I/O only, no caching or Spark
@@ -518,7 +540,7 @@ The disk space usage helps explain some of the numbers.
 
 ## Towards Extreme Query Performance
 
----
+--
 
 ## The filo project
 
@@ -546,7 +568,7 @@ This Scala loop can read integers from a binary Filo blob at a rate of **2 billi
   }
 ```
 
----
+--
 
 ## Vectorization of Spark Queries
 
@@ -556,7 +578,7 @@ Process many elements from the same column at once, keep data in L1/L2 cache.
 
 Coming in Spark 1.4 through 1.6
 
----
+--
 
 ## Hot Column Caching in Tachyon
 
@@ -565,134 +587,21 @@ Coming in Spark 1.4 through 1.6
 
 ---
 
-## Introducing <span class="golden">FiloDB</span>
+## FiloDB - Roadmap
 
-<p>&nbsp;</p>
-<center>
-[http://github.com/velvia/FiloDB](http://github.com/velvia/FiloDB)
-</center>
+* Support for many more data types and sort and partition keys - please give us your input!
+* Non-Spark ingestion API.  Your input is again needed.
+* In-memory caching for significant query speedup
+* Projections.  Often-repeated queries can be sped up significantly with projections.
+* Use of GPU and SIMD instructions to speed up queries
 
----
-
-## What's in the name?
-
-<center>
-![Filo dough](Filo.jpg)
-</center>
-
-Rich sweet layers of distributed, versioned database goodness
-
----
-
-## Distributed
-
-Apache Cassandra.  Scale out with no SPOF.  Cross-datacenter replication.
-Proven storage and database technology.
-
----
-
-## Versioned
-
-Incrementally add a column or a few rows as a new version.  Easily control what versions to query.  Roll back changes inexpensively.
-
-Stream out new versions as continuous queries :)
-
----
-
-## Columnar
-
-- Parquet-style storage layout
-- Retrieve select columns and minimize I/O for OLAP queries
-- Add a new column without having to copy the whole table
-- Vectorization and lazy/zero serialization for extreme efficiency
-
----
-
-## 100% Reactive
-
-Built completely on the Typesafe Platform:
-
-- Scala 2.10 and SBT
-- Spark (including custom data source)
-- Akka Actors for rational scale-out concurrency
-- Futures for I/O
-- Phantom Cassandra client for reactive, type-safe C* I/O
-- Typesafe Config
-
----
-
-## Spark SQL Queries!
-
-```sql
-SELECT first, last, age FROM customers
-  WHERE _version > 3 AND age < 40 LIMIT 100
-```
-
-- Read to and write from Spark Dataframes
-- Append/merge to FiloDB table from Spark Streaming
-
----
-
-## FiloDB vs Parquet
-
-* Comparable read performance - with lots of space to improve
-  - Assuming co-located Spark and Cassandra
-  - On localhost, both subsecond for simple queries (GDELT 1979-1984)
-  - FiloDB has more room to grow - due to hot column caching and much less deserialization overhead
-* Lower memory requirement due to much smaller block sizes
-* Much better fit for IoT / Machine / Time-series applications
-* Limited support for types
-  - array / set / map support not there, but will be added later
-
----
-
-## Where FiloDB Fits In
-
-- Use regular C* denormalized tables for OLTP and single-key lookups
-- Use FiloDB for the remaining ad-hoc or more complex analytical queries
-- Simplify your analytics infrastructure!
-    - No need to export to Hadoop/Parquet/data warehouse.  Use Spark and C* for both OLAP and OLTP!
-- Perform ad-hoc OLAP analysis of your time-series, IoT data
-
----
-
-## Simplify your Lambda Architecture...
-
-<center>
-![Lamba Architecture](lambda-architecture-2-800.jpg)
-</center>
-
-(https://www.mapr.com/developercentral/lambda-architecture)
-
----
-
-## With Spark, Cassandra, and FiloDB
-
-![](simple-architecture.mermaid.png)
-<!-- .element: class="mermaid" -->
-
-- Ma, where did all the components go?
-- You mean I don't have to deal with Hadoop?
-- Use Cassandra as a front end to store IoT data first
-
----
-
-## Exactly-Once Ingestion from Kafka
-
-![](kafka-cass-columnar.mermaid.png)
-<!-- .element: class="mermaid" -->
-
-- New rows appended via Kafka
-- Writes are *idempotent* - no need to dedup!
-- Converted to columnar chunks on ingest and stored in C*
-- Only necessary columnar chunks are read into Spark for minimal I/O
-
----
+--
 
 ## You can help!
 
 - Send me your use cases for OLAP on Cassandra and Spark
-    + Especially IoT and Geospatial
+    + Especially IoT, Event, Time-Series
+    + What is your data model?
 - Email if you want to contribute
 
 ---
@@ -723,28 +632,86 @@ to the entire OSS community, but in particular:
 
 ---
 
+## Tachyon Off-Heap Caching
+
+![](2014-07-spark-cass-tachyon.jpg)
+
+--
+
+## Intro to Tachyon
+
+- Tachyon: an in-memory cache for HDFS and other binary data sources
+- Keeps data off-heap, so multiple Spark applications/executors can share data
+- Solves HA problem for data
+
+--
+
+## Wait, wait, wait!
+
+What am I caching exactly?  Tachyon is designed for caching files or binary blobs.
+
+- A serialized form of `CassandraRow/CassandraRDD`?
+- Raw output from Cassandra driver?
+
+What you really want is this:
+
+Cassandra SSTable -> Tachyon (as row cache) -> CQL -> Spark
+
+---
+
+## Connecting Spark to Cassandra
+
+- Datastax's [Spark Cassandra Connector](https://github.com/datastax/spark-cassandra-connector)
+- Tuplejump [Calliope](http://tuplejump.github.io/calliope/)
+
+<p>&nbsp;
+<center>
+Get started in one line with `spark-shell`!
+</center>
+
+```bash
+bin/spark-shell \
+  --packages com.datastax.spark:spark-cassandra-connector_2.10:1.4.0-M3 \
+  --conf spark.cassandra.connection.host=127.0.0.1
+```
+
+---
+
+## What about C* Secondary Indexing?
+
+Spark-Cassandra Connector and Calliope can both reduce I/O by using Cassandra secondary indices.  Does this work with caching?
+
+No, not really, because only the filtered rows would be cached.  Subsequent queries against this limited cached table would not give you expected results.
+
+NOTE: the DataFrames support in connector 1.3.0-M1 doesn't seem to support predicate pushdown.
+
+---
+
+## Turns out this has been solved before!
+
+<center>
+![Vertica](HPVertica.png)
+![Greenplum](Greenplum.png)
+</center>
+
+Even [Facebook uses Vertica](http://www.vertica.com/?s=mpp+database).
+
+--
+
+## MPP Databases
+
+<center>
+![](CStoreArchitecture.png)
+</center>
+
+- Easy writes plus fast queries, with constant transfers
+- Automatic query optimization by storing intermediate query projections
+- Stonebraker, et. al. - [CStore](https://cs.brown.edu/courses/cs227/archives/2008/mitchpapers/required4.pdf) paper (Brown Univ)
+
+--
+
 > When in doubt, use brute force<br>
 > - Ken Thompson
 
 Note: Both traditional RDBMS and OLAP are very expensive to scale, take longer and longer to produce something complex.  What if we took a different approach?
 
----
-
-## Automatic Columnar Conversion using Custom Indexes
-
-![](cass-columnar-indexing.mermaid.png)
-<!-- .element: class="mermaid" -->
-
-- Write to Cassandra as you normally do
-- Custom indexer takes changes, merges and compacts into columnar chunks behind scenes
-
----
-
-## Implementing Lambda is Hard
-
-- Use real-time pipeline backed by a KV store for new updates
-- Lots of moving parts
-    +  Key-value store, real time sys, batch, etc.
--  Need to run similar code in two places
--  Still need to deal with ingesting data to Parquet/HDFS
--  Need to reconcile queries against two different places
