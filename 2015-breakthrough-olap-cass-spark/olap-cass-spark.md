@@ -338,6 +338,11 @@ NOTE: Simply put, it's a lot of work!
 Distributed. Versioned. Columnar. Built for Streaming.
 </center>
 
+<p>&nbsp;<p>
+<center>
+[github.com/tuplejump/FiloDB](http://github.com/tuplejump/FiloDB)
+</center>
+
 ---
 
 ## FiloDB - What?
@@ -394,8 +399,11 @@ Built completely on the Typesafe Platform:
 ## Spark SQL Queries!
 
 ```sql
-SELECT first, last, age FROM customers
-  WHERE _version > 3 AND age < 40 LIMIT 100
+CREATE TEMPORARY TABLE gdelt
+USING filodb.spark
+OPTIONS (dataset "gdelt");
+
+SELECT Actor1Name, Actor2Name, AvgTone FROM gdelt ORDER BY AvgTone DESC LIMIT 15;
 ```
 
 - Read to and write from Spark Dataframes
@@ -408,7 +416,7 @@ SELECT first, last, age FROM customers
 
 --
 
-## Exactly-Once Event/Time-Series Ingestion
+## Fast Event/Time-Series Ad-Hoc Analytics
 
 ![](kafka-cass-columnar.mermaid.png)
 <!-- .element: class="mermaid" -->
@@ -420,6 +428,23 @@ SELECT first, last, age FROM customers
 
 --
 
+## Fast Event/Time-Series Ad-Hoc Analytics
+
+| Entity  | Time1 | Time2 |
+| ------- | ----- | ----- |
+| US-0123 | d1    | d2    |
+| NZ-9495 | d1    | d2    |
+
+&nbsp;<p>
+Model your time series with FiloDB similarly to Cassandra:
+
+- **Sort key**: Timestamp, similar to clustering key
+- **Partition Key**: Event/machine entity
+
+FiloDB keeps data sorted while stored in efficient columnar storage.
+
+--
+
 ## Analytical Query Performance
 
 ### See the demo later!
@@ -427,20 +452,6 @@ SELECT first, last, age FROM customers
 --
 
 ## Time-series Performance Comparison
-
---
-
-## FiloDB vs Parquet
-
-* Comparable read performance - with lots of space to improve
-  - Assuming co-located Spark and Cassandra
-  - On localhost, both subsecond for simple queries (GDELT 1979-1984)
-  - FiloDB has more room to grow - due to hot column caching and much less deserialization overhead
-* Lower memory requirement due to much smaller block sizes
-* Much better fit for IoT / Machine / Time-series applications
-  - Idempotent writes by PK with no deduplication
-* Limited support for types
-  - array / set / map support not there, but will be added
 
 --
 
@@ -472,6 +483,20 @@ SELECT first, last, age FROM customers
 - Ma, where did all the components go?
 - You mean I don't have to deal with Hadoop?
 - Use Cassandra as a front end to store IoT data first
+
+--
+
+## FiloDB vs Parquet
+
+* Comparable read performance - with lots of space to improve
+  - Assuming co-located Spark and Cassandra
+  - On localhost, both subsecond for simple queries (GDELT 1979-1984)
+  - FiloDB has more room to grow - due to hot column caching and much less deserialization overhead
+* Lower memory requirement due to much smaller block sizes
+* Much better fit for IoT / Machine / Time-series applications
+  - Idempotent writes by PK with no deduplication
+* Limited support for types
+  - array / set / map support not there, but will be added
 
 ---
 
