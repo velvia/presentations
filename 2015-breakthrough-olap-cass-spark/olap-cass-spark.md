@@ -294,12 +294,11 @@ NOTE: data from each column is stored together.
 
 ## Columnar Format solves I/O
 
-- Compression
-    + Dictionary compression - HUGE savings for low-cardinality string columns
-    + RLE, other techniques
-- Reduce I/O
-    + Only columns needed for query are loaded from disk
-- Batch multiple rows in one cell for efficiency (avoid cluster key overhead)
+<center>
+![](columnar_minimize_io.png)
+</center>
+
+How much data can I query interactively?  More than you think!
 
 --
 
@@ -367,7 +366,7 @@ Stream out new versions as continuous queries :)
 ## Columnar
 
 - Parquet-style storage layout
-- Retrieve select columns and minimize I/O for OLAP queries
+- Retrieve select columns and minimize I/O for analytical queries
 - Add a new column without having to copy the whole table
 - Vectorization and lazy/zero serialization for extreme efficiency
 
@@ -414,6 +413,19 @@ SELECT Actor1Name, Actor2Name, AvgTone FROM gdelt ORDER BY AvgTone DESC LIMIT 15
 
 ## FiloDB - Why?
 
+### Fast Streaming Data + Big Data, All in One!
+
+--
+
+## Analytical Query Performance
+
+### Up to <span class="cassred">100x</span> Faster Queries for Spark on Cassandra 2.x
+### Parquet Performance with Cassandra Flexibility
+
+<center>
+(Stick around for the demo)
+</center>
+
 --
 
 ## Fast Event/Time-Series Ad-Hoc Analytics
@@ -445,23 +457,19 @@ FiloDB keeps data sorted while stored in efficient columnar storage.
 
 --
 
-## Analytical Query Performance
-
-### See the demo later!
+## <span class="golden">FiloDB</span> = Streaming + Columnar
 
 --
 
-## Time-series Performance Comparison
+## Extend your Cassandra (2.x) Investment
 
---
+<center>
+![Cassandra ring](cass_ring.png)
+</center>
 
-## Where FiloDB Fits In
+Make it work for batch and ad-hoc analytics!
 
-- Use regular C* denormalized tables for OLTP and single-key lookups
-- Use FiloDB for the remaining ad-hoc or more complex analytical queries
-- Simplify your analytics infrastructure!
-    - No need to export to Hadoop/Parquet/data warehouse.  Use Spark and C* for both OLAP and OLTP!
-- Perform ad-hoc OLAP analysis of your time-series, IoT data
+NOTE: You've poured months in learning how to operate C* clusters.  Make that investment pay off for more than just real-time event ingestion!  
 
 --
 
@@ -624,7 +632,7 @@ Coming in Spark 1.4 through 1.6
 
 ## You can help!
 
-- Send me your use cases for OLAP on Cassandra and Spark
+- Send me your use cases for fast big data analysis on Spark and Cassandra
     + Especially IoT, Event, Time-Series
     + What is your data model?
 - Email if you want to contribute
