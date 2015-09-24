@@ -438,12 +438,14 @@ SELECT Actor1Name, Actor2Name, AvgTone FROM gdelt ORDER BY AvgTone DESC LIMIT 15
 
 ## Analytical Query Performance
 
-### Up to <span class="cassred">100x</span> Faster Queries for Spark on Cassandra 2.x
+### Up to <span class="cassred">200x</span> Faster Queries for Spark on Cassandra 2.x
 ### Parquet Performance with Cassandra Flexibility
 
 <center>
 (Stick around for the demo)
 </center>
+
+NOTE: linear scan queries with little to no shuffles, no joins.  Could be faster than that for some use cases.  No caching done yet.
 
 --
 
@@ -536,6 +538,19 @@ NOTE: You've poured months in learning how to operate C* clusters.  Make that in
 <center>
 ![](http://velvia.github.io/images/filodb_architecture.png)
 </center>
+
+--
+
+## Ingestion and Storage?
+
+Current version:
+
+* Each dataset is stored using 2 regular Cassandra tables
+* Ingestion using Spark (Dataframes or SQL)
+
+Future version?
+
+* Automatic ingestion of your existing C* data using custom secondary index
 
 ---
 
