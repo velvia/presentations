@@ -1,4 +1,5 @@
-# Breakthrough OLAP Performance with
+# Breakthrough OLAP
+# Performance with
 # <span class="cassred">Cassandra</span> and Spark
 
 ### Evan Chan
@@ -12,7 +13,7 @@
 ![](home.jpg)
 </center>
 
-- Distinguished Engineer, [TupleJump](http://www.tuplejump.com)
+- Distinguished Engineer, [Tuplejump](http://www.tuplejump.com)
 - @evanfchan
 - [`http://velvia.github.io`](http://velvia.github.io)
 - User and contributor to Spark since 0.9, Cassandra since 0.6
@@ -294,11 +295,29 @@ NOTE: data from each column is stored together.
 
 ## Columnar Format solves I/O
 
+How much data can I query interactively?  More than you think!
+
 <center>
 ![](columnar_minimize_io.png)
 </center>
 
-How much data can I query interactively?  More than you think!
+--
+
+## Columnar Storage Performance Study
+
+<center>
+http://github.com/velvia/cassandra-gdelt
+</center>
+&nbsp;
+
+| Scenario       | Ingest   | Read all columns | Read one column |
+| :------------- | -------: | ---------------: | --------------: |
+| Narrow table   | 1927 sec | 505 sec          | 504 sec         |
+| Wide table     | 3897 sec | 365 sec          | 351 sec         |
+| Columnar       |  93 sec  |   8.6 sec        | 0.23 sec        |
+
+&nbsp;<p>
+On reads, using a columnar format is up to **2190x** faster, while ingestion is 20-40x faster.
 
 --
 
@@ -518,57 +537,6 @@ NOTE: You've poured months in learning how to operate C* clusters.  Make that in
 ![](http://velvia.github.io/images/filodb_architecture.png)
 </center>
 
---
-
-## Columnar Storage Performance Study
-
-<p>&nbsp;</p>
-<center>
-http://github.com/velvia/cassandra-gdelt
-</center>
-
-- [Global Database of Events, Language, and Tone](http://gdeltproject.org) dataset
-    + 1979 to now
-- 60 columns, 250 million+ rows, 250GB+
-- Let's compare Cassandra I/O only, no caching or Spark
-
---
-
-## The scenarios
-
-1. Narrow table - CQL table with one row per partition key
-2. Wide table - wide rows with 10,000 logical rows per partition key
-3. Columnar layout - 1000 rows per columnar chunk, wide rows, with dictionary compression
-
-First 4 million rows, localhost, SSD, C* 2.0.9, LZ4 compression.  Compaction performed before read benchmarks.
-
---
-
-## Query and ingest times
-
-| Scenario       | Ingest   | Read all columns | Read one column |
-| :------------- | -------: | ---------------: | --------------: |
-| Narrow table   | 1927 sec | 505 sec          | 504 sec         |
-| Wide table     | 3897 sec | 365 sec          | 351 sec         |
-| Columnar       |  93 sec  |   8.6 sec        | 0.23 sec        |
-
-&nbsp;<p>
-On reads, using a columnar format is up to **2190x** faster, while ingestion is 20-40x faster.
-
-- Of course, real life perf gains will depend heavily on query, table width, etc. etc.
-
---
-
-## Disk space usage
-
-| Scenario       | Disk used |
-| :------------- | --------: |
-| Narrow table   | 2.7 GB   |
-| Wide table     | 1.6 GB   |
-| Columnar       | 0.34 GB  |
-
-The disk space usage helps explain some of the numbers.
-
 ---
 
 ## Towards Extreme Query Performance
@@ -663,32 +631,32 @@ to the entire OSS community, but in particular:
 
 # Extra Slides
 
----
+--
 
-## Tachyon Off-Heap Caching
+## The scenarios
 
-![](2014-07-spark-cass-tachyon.jpg)
+- [Global Database of Events, Language, and Tone](http://gdeltproject.org) dataset
+    + 1979 to now
+- 60 columns, 250 million+ rows, 250GB+
+- Let's compare Cassandra I/O only, no caching or Spark
+
+1. Narrow table - CQL table with one row per partition key
+2. Wide table - wide rows with 10,000 logical rows per partition key
+3. Columnar layout - 1000 rows per columnar chunk, wide rows, with dictionary compression
+
+First 4 million rows, localhost, SSD, C* 2.0.9, LZ4 compression.  Compaction performed before read benchmarks.
 
 --
 
-## Intro to Tachyon
+## Disk space usage
 
-- Tachyon: an in-memory cache for HDFS and other binary data sources
-- Keeps data off-heap, so multiple Spark applications/executors can share data
-- Solves HA problem for data
+| Scenario       | Disk used |
+| :------------- | --------: |
+| Narrow table   | 2.7 GB   |
+| Wide table     | 1.6 GB   |
+| Columnar       | 0.34 GB  |
 
---
-
-## Wait, wait, wait!
-
-What am I caching exactly?  Tachyon is designed for caching files or binary blobs.
-
-- A serialized form of `CassandraRow/CassandraRDD`?
-- Raw output from Cassandra driver?
-
-What you really want is this:
-
-Cassandra SSTable -> Tachyon (as row cache) -> CQL -> Spark
+The disk space usage helps explain some of the numbers.
 
 ---
 
