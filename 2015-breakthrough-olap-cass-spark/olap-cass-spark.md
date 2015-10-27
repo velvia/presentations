@@ -445,7 +445,7 @@ SELECT Actor1Name, Actor2Name, AvgTone FROM gdelt ORDER BY AvgTone DESC LIMIT 15
 (Stick around for the demo)
 </center>
 
-NOTE: linear scan queries with little to no shuffles, no joins.  Could be faster than that for some use cases.  No caching done yet.
+NOTE: 200x is just based on columnar storage + projection pushdown - no filtering on sort or partition keys, and no caching done yet.
 
 --
 
@@ -519,8 +519,8 @@ NOTE: You've poured months in learning how to operate C* clusters.  Make that in
 
 * Comparable read performance - with lots of space to improve
   - Assuming co-located Spark and Cassandra
-  - On localhost, both subsecond for simple queries (GDELT 1979-1984)
-  - FiloDB has more room to grow - due to hot column caching and much less deserialization overhead
+  - Competitive performance for different queries incld joins
+  - FiloDB has more room to grow - due to hot column caching and much less deserialization overhead, plus much more filtering flexibility
 * Lower memory requirement due to much smaller block sizes
 * Much better fit for IoT / Machine / Time-series applications
   - Idempotent writes by PK with no deduplication
@@ -530,6 +530,16 @@ NOTE: You've poured months in learning how to operate C* clusters.  Make that in
 ---
 
 ## FiloDB - How?
+
+--
+
+## Multiple ways to Accelerate Queries
+
+* Columnar projection - read fewer columns, saves I/O
+* Partition key filtering - read less data
+* Sort key / PK filtering - read from subset of keys
+  - Possible because FiloDB keeps data sorted
+* Versioning - write to multiple versions, read from the one you choose
 
 --
 
