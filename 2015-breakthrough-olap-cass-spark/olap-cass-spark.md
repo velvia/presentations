@@ -23,11 +23,17 @@
 
 ## About Tuplejump
 
-[Tuplejump](http://tuplejump.com) is a big data technology leader providing solutions for rapid insights from data.
+[Tuplejump](http://tuplejump.com) is a big data technology leader providing solutions and development partnership.
 
 * [Calliope](http://tuplejump.github.io/calliope/) - the first Spark-Cassandra integration
 * [Stargate](http://tuplejump.github.io/stargate/) - an open source Lucene indexer for Cassandra
 * [SnackFS](https://github.com/tuplejump/snackfs) - open source HDFS for Cassandra
+
+---
+
+## TupleJump as your Development Partner
+
+![](tj2.png)
 
 ---
 
