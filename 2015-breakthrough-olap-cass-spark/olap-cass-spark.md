@@ -31,7 +31,7 @@
 
 ---
 
-## TupleJump as your Development Partner
+## Tuplejump as your Development Partner
 
 ![](tj2.png)
 
