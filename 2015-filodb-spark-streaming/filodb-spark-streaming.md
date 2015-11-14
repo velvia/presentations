@@ -376,6 +376,25 @@ FiloDB keeps data sorted while stored in efficient columnar storage.
 
 ---
 
+## Versioning - why it matters
+
+- Databases: let's mutate one giant piece of state in place
+    + **Basically hasn't changed since 1970's!**
+- With Big Data and streaming, incremental processing is more and more important
+- FiloDB is built on functional principles and lets you version and layer changes.  Add changes as new versions, don't mutate!
+- Keep reading from older versions as changes are done to new versions
+
+NOTE: Databases have largely remained the same - even more modern, in-memory ones.They are basically one monolithic piece of state.
+
+---
+
+## Versioning enables Streaming
+
+![](versioning-streaming.mermaid.png)
+<!-- .element: class="mermaid" -->
+
+---
+
 ## <span class="golden">FiloDB</span> - How?
 
 --
