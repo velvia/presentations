@@ -372,6 +372,29 @@ FiloDB keeps data sorted while stored in efficient columnar storage.
 
 --
 
+## Spark Streaming -> FiloDB
+
+```scala
+    val ratingsStream = KafkaUtils.createDirectStream[String, String, StringDecoder, StringDecoder](ssc, kafkaParams, topics)
+    ratingsStream.foreachRDD {
+      (message: RDD[(String, String)], batchTime: Time) => {
+        val df = message.map(_._2.split(",")).map(rating => Rating(rating(0).trim.toInt, rating(1).trim.toInt, rating(2).trim.toInt)).
+          toDF("fromuserid", "touserid", "rating")
+      
+        // add the batch time to the DataFrame
+        val dfWithBatchTime = df.withColumn("batch_time", org.apache.spark.sql.functions.lit(batchTime.milliseconds))
+      
+        // save the DataFrame to FiloDB
+        dfWithBatchTime.write.format("filodb.spark")
+          .option("dataset", "ratings")
+          .save()
+      }
+    }
+```
+One-line change to write to FiloDB vs Cassandra
+
+--
+
 ## FiloDB In-Memory Performance
 
 ---
