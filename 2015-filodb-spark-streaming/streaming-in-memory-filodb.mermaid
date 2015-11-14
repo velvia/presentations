@@ -1,0 +1,11 @@
+graph LR;
+K(Kafka);
+K-- Rows 1,2,3 -->SS1(DStream RDD 1);
+SS1 -->SS2(Stream-RDD 2);
+SS2 -->SS3(Stream-RDD 3);
+F(In-Memory FiloDB);
+SS1 -->F;
+SS2 -->F;
+SS3 -->F;
+SQL(Spark SQL);
+F -->SQL;

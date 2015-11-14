@@ -1,0 +1,10 @@
+graph LR;
+K(Kafka);
+C(Cassandra);
+SS(Spark Streaming);
+K-- Rows 1,2,3 -->SS;
+SS --> C;
+SS --> F(???);
+F --> C;
+C -->S(Spark SQL);
+
