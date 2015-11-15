@@ -370,7 +370,7 @@ FiloDB keeps data sorted while stored in efficient columnar storage.
 - Unlike RDDs and DataFrames, FiloDB can ingest new data, and still be fast
 - Unlike RDDs, FiloDB can filter in multiple ways, no need for entire table scan
 
---
+---
 
 ## Spark Streaming -> FiloDB
 
@@ -392,10 +392,6 @@ FiloDB keeps data sorted while stored in efficient columnar storage.
     }
 ```
 One-line change to write to FiloDB vs Cassandra
-
---
-
-## FiloDB In-Memory Performance
 
 ---
 
