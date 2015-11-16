@@ -456,6 +456,22 @@ On reads, using a columnar format is up to **2190x** faster, while ingestion is 
 
 --
 
+## FiloDB Cassandra Schema
+
+```sql
+CREATE TABLE filodb.gdelt_chunks (
+    partition text,
+    version int,
+    columnname text,
+    segmentid blob,
+    chunkid int,
+    data blob,
+    PRIMARY KEY ((partition, version), columnname, segmentid, chunkid)
+) WITH CLUSTERING ORDER BY (columnname ASC, segmentid ASC, chunkid ASC)
+```
+
+--
+
 ## Columnar Format solves Caching
 
 - Use the same format on disk, in cache, in memory scan
@@ -469,6 +485,8 @@ On reads, using a columnar format is up to **2190x** faster, while ingestion is 
 <center>
 ![](http://velvia.github.io/images/filodb_architecture.png)
 </center>
+
+ColumnStore API - currently Cassandra and InMemory, you can implement other backends - ElasticSearch?  etc.
 
 --
 
