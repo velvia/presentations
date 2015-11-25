@@ -3,7 +3,7 @@
 # <span class="cassred">Cassandra</span> and Spark
 
 ### Evan Chan
-### September 2015
+### December 2015
 
 ---
 
@@ -25,6 +25,7 @@
 
 [Tuplejump](http://tuplejump.com) is a big data technology leader providing solutions and development partnership.
 
+* [FiloDB](http://github.com/tuplejump/FiloDB) - subject of today's talk
 * [Calliope](http://tuplejump.github.io/calliope/) - the first Spark-Cassandra integration
 * [Stargate](http://tuplejump.github.io/stargate/) - an open source Lucene indexer for Cassandra
 * [SnackFS](https://github.com/tuplejump/snackfs) - open source HDFS for Cassandra
@@ -34,13 +35,6 @@
 ## Tuplejump as your Development Partner
 
 ![](tj2.png)
-
----
-
-## Didn't I attend the same talk last year?
-
-- Similar title, but mostly new material
-- Will reveal new open source projects!  :)
 
 ---
 
@@ -93,6 +87,28 @@ People really want a database-like abstraction, not a file format!
 
 ---
 
+## SMACK
+
+- Scala/Spark Streaming
+- Mesos
+- Akka
+- Cassandra
+- Kafka
+
+--
+
+## Spark Streaming
+
+Stream processing + SQL + Machine Learning + ETL...
+
+<center>
+![](spark-streaming.png)
+</center>
+
+"What's New In Spark Streaming" - Tathagada Das, Strata NY 2015
+
+--
+
 ## <span class="cassred">Cassandra</span>
 
 <center>
@@ -106,19 +122,6 @@ People really want a database-like abstraction, not a file format!
 - Best of breed storage technology, huge community
 - **BUT: Simple queries only**
 - **OLTP-oriented**
-
---
-
-## Apache Spark
-
-<center>
-![](spark.jpg)
-</center>
-
-- Horizontally scalable, in-memory queries
-- Functional Scala transforms - `map`, `filter`, `groupBy`, `sort` etc.
-- SQL, machine learning, streaming, graph, R, many more plugins all on ONE platform - feed your SQL results to a logistic regression, easy!
-- Huge number of connectors with every single storage technology
 
 --
 
@@ -151,8 +154,10 @@ People really want a database-like abstraction, not a file format!
 ## How to go Faster?
 
 - Read less data
-- Do less I/O
-- Make your computations faster
+  + COMPACT STORAGE, store your data as Avro/Protobuf/etc.
+  + BUT... need lots of extra code, application + Spark side
+- Filter using 2ndary indices
+  + However, 2i isn't always fast, must scan whole cluster
 
 ---
 
@@ -222,9 +227,9 @@ On an 8-node EC2 c3.XL cluster, 117 million rows, can run common queries 1-2 sec
 
 ## Problems with Cached Tables
 
-If you don't have enough RAM, Spark can cache your tables partly to disk.  This is still way, way, faster than scanning an entire C* table.  However, cached tables are still tied to a single Spark context/application.
+NOTE: Cached tables don't work with 2i indices
 
-Also: `rdd.cache()` is NOT the same as SQLContext's `cacheTable`!
+NOTE: `rdd.cache()` is NOT the same as SQLContext's `cacheTable`!
 
 ---
 
@@ -369,13 +374,13 @@ Distributed. Versioned. Columnar. Built for Streaming.
 
 ---
 
-## FiloDB - What?
+## <span class="golden">FiloDB</span> - What?
 
 --
 
 ## Distributed
 
-Apache Cassandra.  Scale out with no SPOF.  Cross-datacenter replication.
+Apache Cassandra as the rock-solid storage engine.  Scale out with no SPOF.  Cross-datacenter replication.
 Proven storage and database technology.
 
 --
@@ -394,6 +399,22 @@ Stream out new versions as continuous queries :)
 - Retrieve select columns and minimize I/O for analytical queries
 - Add a new column without having to copy the whole table
 - Vectorization and lazy/zero serialization for extreme efficiency
+
+--
+
+## Spark SQL Queries!
+
+```sql
+CREATE TEMPORARY TABLE gdelt
+USING filodb.spark
+OPTIONS (dataset "gdelt");
+
+SELECT Actor1Name, Actor2Name, AvgTone FROM gdelt ORDER BY AvgTone DESC LIMIT 15;
+```
+
+- Read to and write from Spark Dataframes
+- Append/merge to FiloDB table from Spark Streaming
+- Use Tableau or any other JDBC tool
 
 --
 
@@ -418,34 +439,17 @@ Built completely on the Typesafe Platform:
 - Phantom Cassandra client for reactive, type-safe C* I/O
 - Typesafe Config
 
---
-
-## Spark SQL Queries!
-
-```sql
-CREATE TEMPORARY TABLE gdelt
-USING filodb.spark
-OPTIONS (dataset "gdelt");
-
-SELECT Actor1Name, Actor2Name, AvgTone FROM gdelt ORDER BY AvgTone DESC LIMIT 15;
-```
-
-- Read to and write from Spark Dataframes
-- Append/merge to FiloDB table from Spark Streaming
-- Use Tableau or any other JDBC tool
-
 ---
 
-## FiloDB - Why?
-
-### Fast Streaming Data + Big Data, All in One!
+## <span class="golden">FiloDB</span> - Why?
 
 --
 
 ## Analytical Query Performance
 
-### Up to <span class="cassred">200x</span> Faster Queries for Spark on Cassandra 2.x
+### Orders of magnitude Faster Queries for Spark on Cassandra 2.x
 ### Parquet Performance with Cassandra Flexibility
+### (with much better performance ceiling)
 
 <center>
 (Stick around for the demo)
@@ -455,48 +459,36 @@ NOTE: 200x is just based on columnar storage + projection pushdown - no filterin
 
 --
 
-## Fast Event/Time-Series Ad-Hoc Analytics
+## Economical Big Data Storage
 
-![](kafka-cass-columnar.mermaid.png)
-<!-- .element: class="mermaid" -->
+Comparison of GDELT 1979-1984 stored in different formats
 
-- New rows appended via Kafka
-- Writes are *idempotent* - no need to dedup!
-- Converted to columnar chunks on ingest and stored in C*
-- Only necessary columnar chunks are read into Spark for minimal I/O
+| Storage type  | MB  |
+|---------------|-----|
+| Regular C* CQL Table LZ4    |  1900   |
+| Raw CSV file                |  1100   |
+| FiloDB + C* LZ4             |   285 |
+| FiloDB + C* Deflate         |   170 |
+| Parquet + GZIP              |   122 |
 
---
-
-## Fast Event/Time-Series Ad-Hoc Analytics
-
-| Entity  | Time1 | Time2 |
-| ------- | ----- | ----- |
-| US-0123 | d1    | d2    |
-| NZ-9495 | d1    | d2    |
-
-&nbsp;<p>
-Model your time series with FiloDB similarly to Cassandra:
-
-- **Sort key**: Timestamp, similar to clustering key
-- **Partition Key**: Event/machine entity
-
-FiloDB keeps data sorted while stored in efficient columnar storage.
+FiloDB within 40% of Parquet/HDFS today, with room to improve,
 
 --
 
 ## <span class="golden">FiloDB</span> = Streaming + Columnar
 
+### Fast Streaming Data + Big Data, All in One!
+
+NOTE: Combining streaming input and columnar/analytical storage is an extremely hard problem, that we are solving!
+
 --
 
-## Extend your Cassandra (2.x) Investment
+## Designed for Streaming
 
-<center>
-![Cassandra ring](cass_ring.png)
-</center>
-
-Make it work for batch and ad-hoc analytics!
-
-NOTE: You've poured months in learning how to operate C* clusters.  Make that investment pay off for more than just real-time event ingestion!  
+- New rows appended via Spark Streaming or Kafka
+- Writes are *idempotent* - easy **exactly once** ingestion
+- Converted to columnar chunks on ingest and stored in C*
+- FiloDB keeps your data sorted as it is being ingested
 
 --
 
@@ -515,23 +507,59 @@ NOTE: You've poured months in learning how to operate C* clusters.  Make that in
 ![](simple-architecture.mermaid.png)
 <!-- .element: class="mermaid" -->
 
-- Ma, where did all the components go?
-- You mean I don't have to deal with Hadoop?
-- Use Cassandra as a front end to store IoT data first
+- Write key-value lookups to Cassandra regularly
+- Write raw data / events to FiloDB for ad-hoc analysis / ML
+- Far smaller stack to maintain for your analytics
 
 --
 
-## FiloDB vs Parquet
+## Fast Event/Time-Series Ad-Hoc Analytics
 
-* Comparable read performance - with lots of space to improve
-  - Assuming co-located Spark and Cassandra
-  - Competitive performance for different queries incld joins
-  - FiloDB has more room to grow - due to hot column caching and much less deserialization overhead, plus much more filtering flexibility
-* Lower memory requirement due to much smaller block sizes
-* Much better fit for IoT / Machine / Time-series applications
-  - Idempotent writes by PK with no deduplication
-* Limited support for types
-  - array / set / map support not there, but will be added
+| Entity  | Time1 | Time2 |
+| ------- | ----- | ----- |
+| US-0123 | d1    | d2    |
+| NZ-9495 | d1    | d2    |
+
+&nbsp;<p>
+Model your time series with FiloDB similarly to Cassandra:
+
+- **Sort key**: Timestamp, similar to clustering key
+- **Partition Key**: Event/machine entity
+
+FiloDB keeps data sorted while stored in efficient columnar storage.
+
+---
+
+## No Cassandra? Keep it All In Memory
+
+![](streaming-in-memory-filodb.mermaid.png)
+<!-- .element: class="mermaid" -->
+
+- Unlike RDDs and DataFrames, FiloDB can ingest new data, and still be fast
+- Unlike RDDs, FiloDB can filter in multiple ways, no need for entire table scan
+
+---
+
+## Spark Streaming -> FiloDB
+
+```scala
+    val ratingsStream = KafkaUtils.createDirectStream[String, String, StringDecoder, StringDecoder](ssc, kafkaParams, topics)
+    ratingsStream.foreachRDD {
+      (message: RDD[(String, String)], batchTime: Time) => {
+        val df = message.map(_._2.split(",")).map(rating => Rating(rating(0).trim.toInt, rating(1).trim.toInt, rating(2).trim.toInt)).
+          toDF("fromuserid", "touserid", "rating")
+      
+        // add the batch time to the DataFrame
+        val dfWithBatchTime = df.withColumn("batch_time", org.apache.spark.sql.functions.lit(batchTime.milliseconds))
+      
+        // save the DataFrame to FiloDB
+        dfWithBatchTime.write.format("filodb.spark")
+          .option("dataset", "ratings")
+          .save()
+      }
+    }
+```
+One-line change to write to FiloDB vs Cassandra
 
 ---
 
