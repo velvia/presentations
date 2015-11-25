@@ -38,13 +38,23 @@
 
 ---
 
-## Problem Space
+### Big data is yesterday.
+# FAST DATA
+## is now.
 
-- Need analytical database / queries on structured big data
-    + Something SQL-like, very flexible and fast
-    + Pre-aggregation too limiting
-- Fast data / constant updates
-    + Ideally, want my queries to run over fresh data too
+--
+
+<center>
+![](Fast-Data-FSI-Whiteboard.png)
+</center>
+
+--
+
+## Fast Data + Big Data
+
+- **1-30 seconds**: Reactive processing of streaming data as it comes in to derive instant insights.
+- **Minutes to Days/Months**: Combine with recent or historical data for deeper insights, trends, ML.
+- Not enough just to have stream processing or batch processing.
 
 --
 
@@ -52,7 +62,7 @@
 
 - Typical collection and analysis of consumer events
 - 3 billion new events every day
-- Video publishers want updated stats, the sooner the better
+- Video publishers want both instant streaming analytics plus reports over months, dashboards
 - Pre-aggregation only enables simple dashboard UIs
 - What if one wants to offer more advanced analysis, or a generic data query API?
     + Eg, top countries filtered by device type, OS, browser
@@ -256,51 +266,22 @@ CREATE TABLE (
 
 --
 
-## How Cassandra stores your CQL Tables
+## Cassandra CQL vs Columnar Layout
+
+Cassandra stores CQL tables row-major, each row spans multiple cells:
 
 | PartitionKey | 01:first | 01:last | 01:age | 02:first | 02:last | 02:age |
 | :----------- | :------- | :------ | -----: | :------- | :------ | -----: |
 | Sales        | Bob      | Jones   | 34     | Susan    | O'Connor | 40    |
 | Engineering  | Dilbert  | P       | ?      | Dogbert  | Dog     |  1     |
 
-<p>&nbsp;<p>
-Each row is stored contiguously.  All columns in row 2 come after row 1.
+&nbsp;<p>
+Columnar layouts are column-major:
 
-To analyze only age, C* still has to read every field.
-
---
-
-Cassandra is really a row-based, OLTP-oriented datastore.
-
-Unless you know how to use it otherwise  :)
-
-NOTE: Cassandra is only columnar in the sense it permits wide rows, or clustering keys, but you'd be hard pressed to know that from looking at CQL table definitions.
-
----
-
-> The traditional row-based data storage approach is dead<br>
-  - Michael Stonebraker
-
---
-
-## Columnar Storage
-
-**Name column**
-
-| 0     |    1    |
-| ----- | ------- |
-| 0     |    1    |
-<p>&nbsp;<p>
-Dictionary: {0: "Barak", 1: "Hillary"}
-
-<p>&nbsp;<p>
-**Age column**
-
-| 0     |    1    |
-| ----- | ------- |
-| 46 | 66 |
-
-NOTE: data from each column is stored together.
+| PartitionKey | first  |  last  |  age  |
+| :----------- | ------ | ------ | ----- |
+| Sales        | Bob, Susan | Jones, O'Connor | 34, 40 |
+| Engineering  | Dilbert, Dogbert | P, Dog    | ?, 1   |
 
 --
 
@@ -329,14 +310,6 @@ http://github.com/velvia/cassandra-gdelt
 
 &nbsp;<p>
 On reads, using a columnar format is up to **2190x** faster, while ingestion is 20-40x faster.
-
---
-
-## Columnar Format solves Caching
-
-- Use the same format on disk, in cache, in memory scan
-    + Caching works a lot better when the cached object is the same!!
-- No data format dissonance means bringing in new bits of data and combining with existing cached data is seamless
 
 ---
 
@@ -378,27 +351,12 @@ Distributed. Versioned. Columnar. Built for Streaming.
 
 --
 
-## Distributed
+## Distributed.  Versioned.  Columnar.
 
-Apache Cassandra as the rock-solid storage engine.  Scale out with no SPOF.  Cross-datacenter replication.
-Proven storage and database technology.
-
---
-
-## Versioned
-
-Incrementally add a column or a few rows as a new version.  Easily control what versions to query.  Roll back changes inexpensively.
-
-Stream out new versions as continuous queries :)
-
---
-
-## Columnar
-
-- Parquet-style storage layout
-- Retrieve select columns and minimize I/O for analytical queries
-- Add a new column without having to copy the whole table
-- Vectorization and lazy/zero serialization for extreme efficiency
+* Apache Cassandra as the rock-solid storage engine.  Scale out with no SPOF.
+* Separate new rows or columns as versions and query them separately
+  - Roll back changes anytime, inexpensively
+* Efficient columnar layout = space efficient + fast queries
 
 --
 
@@ -415,6 +373,16 @@ SELECT Actor1Name, Actor2Name, AvgTone FROM gdelt ORDER BY AvgTone DESC LIMIT 15
 - Read to and write from Spark Dataframes
 - Append/merge to FiloDB table from Spark Streaming
 - Use Tableau or any other JDBC tool
+
+--
+
+## Multiple ways to Accelerate Queries
+
+* Columnar projection - read fewer columns, saves I/O
+* Partition key filtering - read less data
+* Sort key / PK filtering - read from subset of keys
+  - Possible because FiloDB keeps data sorted
+* Versioning - write to multiple versions, read from the one you choose
 
 --
 
@@ -511,23 +479,6 @@ NOTE: Combining streaming input and columnar/analytical storage is an extremely 
 - Write raw data / events to FiloDB for ad-hoc analysis / ML
 - Far smaller stack to maintain for your analytics
 
---
-
-## Fast Event/Time-Series Ad-Hoc Analytics
-
-| Entity  | Time1 | Time2 |
-| ------- | ----- | ----- |
-| US-0123 | d1    | d2    |
-| NZ-9495 | d1    | d2    |
-
-&nbsp;<p>
-Model your time series with FiloDB similarly to Cassandra:
-
-- **Sort key**: Timestamp, similar to clustering key
-- **Partition Key**: Event/machine entity
-
-FiloDB keeps data sorted while stored in efficient columnar storage.
-
 ---
 
 ## No Cassandra? Keep it All In Memory
@@ -563,17 +514,28 @@ One-line change to write to FiloDB vs Cassandra
 
 ---
 
-## FiloDB - How?
+## Use Case #1: Smart Cities
 
 --
 
-## Multiple ways to Accelerate Queries
+## Fast Event/Time-Series Ad-Hoc Analytics
 
-* Columnar projection - read fewer columns, saves I/O
-* Partition key filtering - read less data
-* Sort key / PK filtering - read from subset of keys
-  - Possible because FiloDB keeps data sorted
-* Versioning - write to multiple versions, read from the one you choose
+| Entity  | Time1 | Time2 |
+| ------- | ----- | ----- |
+| US-0123 | d1    | d2    |
+| NZ-9495 | d1    | d2    |
+
+&nbsp;<p>
+Model your time series with FiloDB similarly to Cassandra:
+
+- **Sort key**: Timestamp, similar to clustering key
+- **Partition Key**: Event/machine entity
+
+FiloDB keeps data sorted while stored in efficient columnar storage.
+
+---
+
+## FiloDB - How?
 
 --
 
@@ -582,6 +544,22 @@ One-line change to write to FiloDB vs Cassandra
 <center>
 ![](http://velvia.github.io/images/filodb_architecture.png)
 </center>
+
+--
+
+## FiloDB Cassandra Schema
+
+```sql
+CREATE TABLE filodb.gdelt_chunks (
+    partition text,
+    version int,
+    columnname text,
+    segmentid blob,
+    chunkid int,
+    data blob,
+    PRIMARY KEY ((partition, version), columnname, segmentid, chunkid)
+) WITH CLUSTERING ORDER BY (columnname ASC, segmentid ASC, chunkid ASC)
+```
 
 --
 
@@ -659,6 +637,7 @@ Coming in Spark 1.4 through 1.6
 
 ## You can help!
 
+- Try it out!
 - Send me your use cases for fast big data analysis on Spark and Cassandra
     + Especially IoT, Event, Time-Series
     + What is your data model?
@@ -690,7 +669,7 @@ to the entire OSS community, but in particular:
 
 # Extra Slides
 
---
+---
 
 ## The scenarios
 
@@ -705,17 +684,13 @@ to the entire OSS community, but in particular:
 
 First 4 million rows, localhost, SSD, C* 2.0.9, LZ4 compression.  Compaction performed before read benchmarks.
 
---
+---
 
-## Disk space usage
+## Columnar Format solves Caching
 
-| Scenario       | Disk used |
-| :------------- | --------: |
-| Narrow table   | 2.7 GB   |
-| Wide table     | 1.6 GB   |
-| Columnar       | 0.34 GB  |
-
-The disk space usage helps explain some of the numbers.
+- Use the same format on disk, in cache, in memory scan
+    + Caching works a lot better when the cached object is the same!!
+- No data format dissonance means bringing in new bits of data and combining with existing cached data is seamless
 
 ---
 
@@ -744,34 +719,4 @@ Spark-Cassandra Connector and Calliope can both reduce I/O by using Cassandra se
 No, not really, because only the filtered rows would be cached.  Subsequent queries against this limited cached table would not give you expected results.
 
 NOTE: the DataFrames support in connector 1.3.0-M1 doesn't seem to support predicate pushdown.
-
----
-
-## Turns out this has been solved before!
-
-<center>
-![Vertica](HPVertica.png)
-![Greenplum](Greenplum.png)
-</center>
-
-Even [Facebook uses Vertica](http://www.vertica.com/?s=mpp+database).
-
---
-
-## MPP Databases
-
-<center>
-![](CStoreArchitecture.png)
-</center>
-
-- Easy writes plus fast queries, with constant transfers
-- Automatic query optimization by storing intermediate query projections
-- Stonebraker, et. al. - [CStore](https://cs.brown.edu/courses/cs227/archives/2008/mitchpapers/required4.pdf) paper (Brown Univ)
-
---
-
-> When in doubt, use brute force<br>
-> - Ken Thompson
-
-Note: Both traditional RDBMS and OLAP are very expensive to scale, take longer and longer to produce something complex.  What if we took a different approach?
 
