@@ -460,6 +460,23 @@ NOTE: Combining streaming input and columnar/analytical storage is an extremely 
 
 --
 
+## Fast Event/Time-Series Ad-Hoc Analytics
+
+| Entity  | Time1 | Time2 |
+| ------- | ----- | ----- |
+| US-0123 | d1    | d2    |
+| NZ-9495 | d1    | d2    |
+
+&nbsp;<p>
+Model your time series with FiloDB similarly to Cassandra:
+
+- **Sort key**: Timestamp, similar to clustering key
+- **Partition Key**: Event/machine entity
+
+FiloDB keeps data sorted while stored in efficient columnar storage.
+
+--
+
 ## Simplify your Lambda Architecture...
 
 <center>
@@ -514,24 +531,84 @@ One-line change to write to FiloDB vs Cassandra
 
 ---
 
-## Use Case #1: Smart Cities
+## Use Case: Smart Cities Transportation
 
 --
 
-## Fast Event/Time-Series Ad-Hoc Analytics
+## Streaming Data Sources
 
-| Entity  | Time1 | Time2 |
-| ------- | ----- | ----- |
-| US-0123 | d1    | d2    |
-| NZ-9495 | d1    | d2    |
+* City buses - regular telemetry (position, velocity, timestamp)
+* Street sweepers - regular telemetry
+* Transactions from metro (rail/MRT/subway), buses, smart cards
 
-&nbsp;<p>
-Model your time series with FiloDB similarly to Cassandra:
+<center>
+![Boston street sweeper](boston-street-sweeper.jpg)
+</center>
 
-- **Sort key**: Timestamp, similar to clustering key
-- **Partition Key**: Event/machine entity
+--
 
-FiloDB keeps data sorted while stored in efficient columnar storage.
+## Streaming Data Sources (II)
+
+* "311" information - reports of potholes, broken light fixtures, things needing repair
+* "911" information - new emergencies and incidents
+
+--
+
+## Citizens Want to Know
+
+* Where and for how long can I park my car?
+* Are transportation options affected by 311 and 911 events?
+* How long will it take the next bus to get here?
+* Where is the closest bus to where I am?
+
+--
+
+## Cities Want to Know...
+
+* How can I maximize parking revenue?
+  - More granular updates to parking spots that don't need sweeping
+* How does traffic affect waiting times in public transit, and revenue?
+* How do events affect bus scheduling?
+
+--
+
+## Example: Car Parking vs Street Sweepers
+
+Static dataset: Car Parking spaces/blocks
+
+* Partition key: Geohash
+* Sort key: (Parking space geo center, Parking space UUID)
+
+Streaming dataset: Street sweeper telemetry
+
+* Partition key: Geohash of current sweeper location
+* Fields: direction, velocity
+
+Streaming dataset: Parking records
+
+* Partition key: Geohash of parking space
+* Fields: (Space UUID, Datetime start parking, Datetime end, violations, tow, etc.)
+
+--
+
+## Example Architecture
+
+![](smart-cities.mermaid.png)
+<!-- .element: class="mermaid" -->
+
+--
+
+## Example Analyses
+
+Spark Streaming - Alerting Car Owners
+
+* Join newest sweeper telemetry with FiloDB parking spaces and parking records dataset
+  - All local join due to same partitioning strategy
+  - Send alert to owners N hours before sweeper comes nearby
+
+Spark - Analyzing Parking Revenue
+
+* Scan all recent parking records (verioned by month for example) for a given district, analyze unavailability of parking spaces due to sweepers
 
 ---
 
