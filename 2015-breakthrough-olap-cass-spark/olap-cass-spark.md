@@ -306,6 +306,7 @@ http://github.com/velvia/cassandra-gdelt
 | :------------- | -------: | ---------------: | --------------: |
 | Narrow table   | 1927 sec | 505 sec          | 504 sec         |
 | Wide table     | 3897 sec | 365 sec          | 351 sec         |
+| COMPACT STORAGE | 79 sec  |  82 sec          | 82 sec          |
 | Columnar       |  93 sec  |   8.6 sec        | 0.23 sec        |
 
 &nbsp;<p>
@@ -436,10 +437,11 @@ Comparison of GDELT 1979-1984 stored in different formats
 | Regular C* CQL Table LZ4    |  1900   |
 | Raw CSV file                |  1100   |
 | FiloDB + C* LZ4             |   285 |
+| C* COMPACT STORAGE LZ4      |   260 |
 | FiloDB + C* Deflate         |   170 |
 | Parquet + GZIP              |   122 |
 
-FiloDB within 40% of Parquet/HDFS today, with room to improve,
+FiloDB within 40% of Parquet/HDFS today, with room to improve
 
 --
 
