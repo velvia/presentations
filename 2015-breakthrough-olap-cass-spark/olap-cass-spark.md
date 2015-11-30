@@ -434,7 +434,7 @@ Comparison of GDELT 1979-1984 stored in different formats
 
 | Storage type  | MB  |
 |---------------|-----|
-| Regular C* CQL Table LZ4    |  1900   |
+| Wide row C* CQL Table LZ4    |  1900   |
 | Raw CSV file                |  1100   |
 | FiloDB + C* LZ4             |   285 |
 | C* COMPACT STORAGE LZ4      |   260 |
