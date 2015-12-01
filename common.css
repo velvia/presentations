@@ -35,6 +35,13 @@ p {
   width: 70%;
 }
 
+.reveal widetable {
+  margin-left: auto;
+  margin-right: auto;
+  border-collapse: collapse;
+  width: 85%;
+}
+
 .reveal .fullwidth {
   width: 100%;
 }

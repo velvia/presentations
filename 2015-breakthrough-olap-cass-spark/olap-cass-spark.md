@@ -302,12 +302,13 @@ http://github.com/velvia/cassandra-gdelt
 </center>
 &nbsp;
 
-| Scenario       | Ingest   | Read all columns | Read one column |
+| Scenario       | Ingest   | Select * | Select col1 |
 | :------------- | -------: | ---------------: | --------------: |
 | Narrow table   | 1927 sec | 505 sec          | 504 sec         |
 | Wide table     | 3897 sec | 365 sec          | 351 sec         |
-| COMPACT STORAGE | 79 sec  |  82 sec          | 82 sec          |
+| CompactStorage | 79 sec  |  82 sec          | 82 sec          |
 | Columnar       |  93 sec  |   8.6 sec        | 0.23 sec        |
+<!-- .element: class="widetable" -->
 
 &nbsp;<p>
 On reads, using a columnar format is up to **2190x** faster, while ingestion is 20-40x faster.
