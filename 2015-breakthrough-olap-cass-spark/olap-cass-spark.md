@@ -417,15 +417,18 @@ Built completely on the Typesafe Platform:
 
 ## Analytical Query Performance
 
-### Orders of magnitude Faster Queries for Spark on Cassandra 2.x
-### Parquet Performance with Cassandra Flexibility
+### Orders of magnitude Faster Queries for
+### Spark on Cassandra 2.x
+### > Parquet Performance with Cassandra Flexibility
 ### (with much better performance ceiling)
+
+(Competitive with Parquet for full table scans, better with partition key filtering)
 
 <center>
 (Stick around for the demo)
 </center>
 
-NOTE: 200x is just based on columnar storage + projection pushdown - no filtering on sort or partition keys, and no caching done yet.
+NOTE: 200x is just based on columnar storage + projection pushdown - more with filtering
 
 --
 
@@ -443,6 +446,14 @@ Comparison of GDELT 1979-1984 stored in different formats
 | Parquet + GZIP              |   122 |
 
 FiloDB within 40% of Parquet/HDFS today, with room to improve
+
+--
+
+## Storage Cost vs Query Speeds
+
+<center>
+![](storage_cost_vs_query.png)
+</center>
 
 --
 
