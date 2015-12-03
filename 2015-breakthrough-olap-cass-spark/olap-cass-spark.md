@@ -564,7 +564,9 @@ One-line change to write to FiloDB vs Cassandra
 ## Streaming Data Sources (II)
 
 * "311" information - reports of potholes, broken light fixtures, things needing repair
+  - https://data.honolulu.gov/dataset/Honolulu-311-Reports/6hui-dvrh
 * "911" information - new emergencies and incidents
+* Mobile phone location tracking
 
 --
 
@@ -582,7 +584,8 @@ One-line change to write to FiloDB vs Cassandra
 * How can I maximize parking revenue?
   - More granular updates to parking spots that don't need sweeping
 * How does traffic affect waiting times in public transit, and revenue?
-* How do events affect bus scheduling?
+* Patterns in subway train times - is a breakdown coming?
+* Population movement - where should new transit routes be placed?
 
 --
 
