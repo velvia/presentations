@@ -440,9 +440,9 @@ Comparison of GDELT 1979-1984 stored in different formats
 |---------------|-----|
 | Wide row C* CQL Table LZ4    |  1900   |
 | Raw CSV file                |  1100   |
-| FiloDB + C* LZ4             |   285 |
+| FiloDB + C* LZ4             |   266 |
 | C* COMPACT STORAGE LZ4      |   260 |
-| FiloDB + C* Deflate         |   170 |
+| FiloDB + C* Deflate         |   164 |
 | Parquet + GZIP              |   122 |
 
 FiloDB within 40% of Parquet/HDFS today, with room to improve
