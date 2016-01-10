@@ -13,3 +13,5 @@ Getting started
 2. run `npm install`
 3. run `grunt serve`.
 4. browse to the presentation on port 8000
+
+To compile the .mermaid source files to .png's, install the [Mermaid CLI](http://knsv.github.io/mermaid/mermaidCLI.html).
