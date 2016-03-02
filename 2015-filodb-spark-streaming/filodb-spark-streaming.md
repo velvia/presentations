@@ -236,27 +236,42 @@ A distributed, versioned, columnar analytics database. Built for Streaming.
 
 --
 
-## Distributed
+## Fast Analytics Storage
+
+- Scan speeds competitive with Apache Parquet
+  + Up to 200x faster scan speeds than with Cassandra 2.x
+- Flexible filtering along two dimensions
+  + Much more efficient and flexible partition key filtering
+- Efficient columnar storage, up to 27x more efficient than Cassandra 2.x
+
+NOTE: 200x is just based on columnar storage + projection pushdown - no filtering on sort or partition keys, and no caching done yet.
+
+--
+
+## <span class="golden">FiloDB</span> = Streaming + Columnar
+
+### Fast Streaming Data + Big Data, All in One!
+
+NOTE: Combining streaming input and columnar/analytical storage is an extremely hard problem, that we are solving!
+
+--
+
+## Robust Distributed Storage
 
 Apache Cassandra as the rock-solid storage engine.  Scale out with no SPOF.  Cross-datacenter replication.
 Proven storage and database technology.
 
 --
 
-## Versioned
+## Familiar, Flexible Data Model
 
-Incrementally add a column or a few rows as a new version.  Easily control what versions to query.  Roll back changes inexpensively.
+Just like Apache Cassandra, FiloDB allows you to organize your data using
 
-Stream out new versions as continuous queries :)
+- **partition keys** - distributes data around a cluster, and allows for fine grained and flexible filtering
+- **segment keys** - do range scans within a partition, eg by time slice
+- primary key based ingestion and updates
 
---
-
-## Columnar
-
-- Parquet-style storage layout
-- Retrieve select columns and minimize I/O for analytical queries
-- Add a new column without having to copy the whole table
-- Vectorization and lazy/zero serialization for extreme efficiency
+Unlike Cassandra, FiloDB offers very flexible and efficient filtering on partition keys.  There is no need to write multiple tables to work around answering different queries.
 
 --
 
@@ -303,25 +318,13 @@ Built completely on the Typesafe Platform:
 
 --
 
-## Analytical Query Performance
+## Data Warehousing / BI on
+## Spark and Cassandra
 
-### Up to <span class="cassred">200x</span> Faster Queries for Spark on Cassandra 2.x
-### Parquet Performance with Cassandra Flexibility
-### (with much better performance ceiling in the future)
+![](data-warehouse.mermaid.png)
+<!-- .element: class="mermaid" -->
 
-<center>
-(Stick around for the demo)
-</center>
-
-NOTE: 200x is just based on columnar storage + projection pushdown - no filtering on sort or partition keys, and no caching done yet.
-
---
-
-## <span class="golden">FiloDB</span> = Streaming + Columnar
-
-### Fast Streaming Data + Big Data, All in One!
-
-NOTE: Combining streaming input and columnar/analytical storage is an extremely hard problem, that we are solving!
+Efficient columnar storage + filtering = low latency BI
 
 --
 
@@ -331,17 +334,6 @@ NOTE: Combining streaming input and columnar/analytical storage is an extremely 
 - Writes are *idempotent* - easy **exactly once** ingestion
 - Converted to columnar chunks on ingest and stored in C*
 - FiloDB keeps your data sorted as it is being ingested
-
---
-
-## SMACK stack for all your Analytics
-
-![](simple-architecture.mermaid.png)
-<!-- .element: class="mermaid" -->
-
-- Write key-value lookups to Cassandra regularly
-- Write raw data / events to FiloDB for ad-hoc analysis / ML
-- Far smaller stack to maintain for your analytics
 
 --
 
@@ -355,20 +347,33 @@ NOTE: Combining streaming input and columnar/analytical storage is an extremely 
 &nbsp;<p>
 Model your time series with FiloDB similarly to Cassandra:
 
-- **Sort key**: Timestamp, similar to clustering key
-- **Partition Key**: Event/machine entity
+- **Segment key**: Timestamp, similar to clustering key
+- **Partition Keys**: Event/machine entity, maybe week/month etc.
 
 FiloDB keeps data sorted while stored in efficient columnar storage.
 
----
+--
 
-## No Cassandra? Keep it All In Memory
+## Fast, Updatable In-Memory
+## Columnar Storage
 
 ![](streaming-in-memory-filodb.mermaid.png)
 <!-- .element: class="mermaid" -->
 
 - Unlike RDDs and DataFrames, FiloDB can ingest new data, and still be fast
 - Unlike RDDs, FiloDB can filter in multiple ways, no need for entire table scan
+- FAIR scheduler + sub-second latencies => web speed queries
+
+--
+
+## SMACK stack for all your Analytics
+
+![](simple-architecture.mermaid.png)
+<!-- .element: class="mermaid" -->
+
+- Write key-value lookups to Cassandra regularly
+- Write raw data / events to FiloDB for ad-hoc analysis / ML
+- Far smaller stack to maintain for your analytics
 
 ---
 
@@ -425,6 +430,25 @@ NOTE: Databases have largely remained the same - even more modern, in-memory one
 * Sort key / PK filtering - read from subset of keys
   - Possible because FiloDB keeps data sorted
 * Versioning - write to multiple versions, read from the one you choose
+
+--
+
+## Cassandra CQL vs Columnar Layout
+
+Cassandra stores CQL tables row-major, each row spans multiple cells:
+
+| PartitionKey | 01:first | 01:last | 01:age | 02:first | 02:last | 02:age |
+| :----------- | :------- | :------ | -----: | :------- | :------ | -----: |
+| Sales        | Bob      | Jones   | 34     | Susan    | O'Connor | 40    |
+| Engineering  | Dilbert  | P       | ?      | Dogbert  | Dog     |  1     |
+
+&nbsp;<p>
+Columnar layouts are column-major:
+
+| PartitionKey | first  |  last  |  age  |
+| :----------- | ------ | ------ | ----- |
+| Sales        | Bob, Susan | Jones, O'Connor | 34, 40 |
+| Engineering  | Dilbert, Dogbert | P, Dog    | ?, 1   |
 
 --
 
