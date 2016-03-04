@@ -2,16 +2,16 @@
   "name": "reveal.js",
   "version": "2.6.2",
   "description": "The HTML Presentation Framework",
-  "homepage": "http://lab.hakim.se/reveal-js",
-  "subdomain": "revealjs",
+  "homepage": "http://tuplejump.com",
+  "subdomain": "",
   "scripts": {
     "test": "grunt test",
     "start": ""
   },
   "author": {
-    "name": "Hakim El Hattab",
-    "email": "hakim.elhattab@gmail.com",
-    "web": "http://hakim.se"
+    "name": "Tuplejump",
+    "email": "info@tuplejump.com",
+    "web": "http://tuplejump.com"
   },
   "repository": {
     "type": "git",
