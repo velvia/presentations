@@ -18,15 +18,29 @@
 		throw 'The reveal.js Markdown plugin requires marked to be loaded';
 	}
 
-	if( typeof hljs !== 'undefined' ) {
-		marked.setOptions({
-			highlight: function( lang, code ) {
-				return hljs.highlightAuto( lang, code ).value;
+	var markedOptions = {};
+
+	if(typeof mermaid !== 'undefined' ) {
+		markedOptions.renderer = new marked.Renderer();
+		markedOptions.renderer.code =function(code, language){
+			if(code.match(/^sequenceDiagram/)||code.match(/^graph/)){
+				return '<div class="mermaid">'+code+'</div>';
+ 			} else {
+				return '<pre><code>'+code+'</code></pre>';
 			}
-		});
+		};
 	}
 
-	var DEFAULT_SLIDE_SEPARATOR = '^\n---\n$',
+	if(typeof hljs !== 'undefined' ) {
+		markedOptions.highlight = function( lang, code ) {
+			return hljs.highlightAuto( lang, code ).value;
+		}
+	}
+
+	marked.setOptions(markedOptions);
+
+
+	var DEFAULT_SLIDE_SEPARATOR = '^\r?\n---\r?\n$',
 		DEFAULT_NOTES_SEPARATOR = 'note:',
 		DEFAULT_ELEMENT_ATTRIBUTES_SEPARATOR = '\\\.element\\\s*?(.+?)$',
 		DEFAULT_SLIDE_ATTRIBUTES_SEPARATOR = '\\\.slide:\\\s*?(\\\S.+?)$';
@@ -50,7 +64,7 @@
 			text = text.replace( new RegExp('\\n?\\t{' + leadingTabs + '}','g'), '\n' );
 		}
 		else if( leadingWs > 1 ) {
-			text = text.replace( new RegExp('\\n? {' + leadingWs + '}','g'), '\n' );
+			text = text.replace( new RegExp('\\n? {' + leadingWs + '}', 'g'), '\n' );
 		}
 
 		return text;
@@ -76,7 +90,7 @@
 			if( /data\-(markdown|separator|vertical|notes)/gi.test( name ) ) continue;
 
 			if( value ) {
-				result.push( name + '=' + value );
+				result.push( name + '="' + value + '"' );
 			}
 			else {
 				result.push( name );
@@ -219,12 +233,13 @@
 
 				xhr.onreadystatechange = function() {
 					if( xhr.readyState === 4 ) {
-						if ( xhr.status >= 200 && xhr.status < 300 ) {
+						// file protocol yields status code 0 (useful for local debug, mobile applications etc.)
+						if ( ( xhr.status >= 200 && xhr.status < 300 ) || xhr.status === 0 ) {
 
 							section.outerHTML = slidify( xhr.responseText, {
 								separator: section.getAttribute( 'data-separator' ),
-								verticalSeparator: section.getAttribute( 'data-vertical' ),
-								notesSeparator: section.getAttribute( 'data-notes' ),
+								verticalSeparator: section.getAttribute( 'data-separator-vertical' ),
+								notesSeparator: section.getAttribute( 'data-separator-notes' ),
 								attributes: getForwardedAttributes( section )
 							});
 
@@ -251,12 +266,12 @@
 				}
 
 			}
-			else if( section.getAttribute( 'data-separator' ) || section.getAttribute( 'data-vertical' ) || section.getAttribute( 'data-notes' ) ) {
+			else if( section.getAttribute( 'data-separator' ) || section.getAttribute( 'data-separator-vertical' ) || section.getAttribute( 'data-separator-notes' ) ) {
 
 				section.outerHTML = slidify( getMarkdownFromSlide( section ), {
 					separator: section.getAttribute( 'data-separator' ),
-					verticalSeparator: section.getAttribute( 'data-vertical' ),
-					notesSeparator: section.getAttribute( 'data-notes' ),
+					verticalSeparator: section.getAttribute( 'data-separator-vertical' ),
+					notesSeparator: section.getAttribute( 'data-separator-notes' ),
 					attributes: getForwardedAttributes( section )
 				});
 
@@ -367,11 +382,15 @@
 				if( notes ) {
 					section.appendChild( notes );
 				}
-
 			}
 
 		}
 
+		// call mermaid if present
+		if(typeof mermaid !== 'undefined' ) {
+			mermaid.initialize({mermaid: { cloneCssStyles: true }});
+			mermaid.init();
+		}
 	}
 
 	// API

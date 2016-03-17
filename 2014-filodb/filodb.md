@@ -4,6 +4,23 @@
 
 ---
 
+```marked
+graph LR
+A[Hard edge] -->|Link text| B(Round edge)
+B --> C{Decision}
+C -->|One| D[Result one]
+C -->|Two| E[Result two]
+```
+
+
+---
+
+```scala
+def a(b: Int): String = {}
+```
+
+---
+
 ## Problem Space
 
 - Need analytical database / queries on structured big data
