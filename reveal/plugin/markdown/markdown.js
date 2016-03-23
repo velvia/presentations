@@ -23,8 +23,12 @@
 	if(typeof mermaid !== 'undefined' ) {
 		markedOptions.renderer = new marked.Renderer();
 		markedOptions.renderer.code =function(code, language){
-			if(code.match(/^sequenceDiagram/)||code.match(/^graph/)){
-				return '<div class="mermaid">'+code+'</div>';
+			// if(code.match(/^sequenceDiagram/)||code.match(/^graph/)){
+			if(language = 'mermaid') {
+				// return '<div class="mermaid">'+code+'</div>';
+				var html = "";
+				mermaidAPI.render('mermaid01', code, function(svgHtml){ html = svgHtml; });
+				return html;
  			} else {
 				return '<pre><code>'+code+'</code></pre>';
 			}
@@ -354,8 +358,16 @@
 	 * DOM to HTML.
 	 */
 	function convertSlides() {
-
 		var sections = document.querySelectorAll( '[data-markdown]');
+
+		// initialize mermaid if present
+		if(typeof mermaid !== 'undefined' ) {
+      mermaid.initialize({
+          cloneCssStyles: false,
+          // mermaid: { cloneCssStyles: false },
+          logLevel:1
+      });
+		}
 
 		for( var i = 0, len = sections.length; i < len; i++ ) {
 
@@ -382,15 +394,11 @@
 				if( notes ) {
 					section.appendChild( notes );
 				}
+
+				// Expand mermaid SVG if innerHTML has div class mermaid
 			}
-
 		}
 
-		// call mermaid if present
-		if(typeof mermaid !== 'undefined' ) {
-			mermaid.initialize({mermaid: { cloneCssStyles: true }});
-			mermaid.init();
-		}
 	}
 
 	// API
