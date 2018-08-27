@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Performance Benchmarking: JMH, SJK 2018</title>
+    <meta charset="utf-8">
+    <style>
+      @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+      @import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
+      @import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+
+      body { font-family: 'Droid Serif'; }
+      h1, h2, h3 {
+        font-family: 'Yanone Kaffeesatz';
+        font-weight: normal;
+      }
+      .remark-code, .remark-inline-code { font-family: 'Ubuntu Mono'; }
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+class: center, middle
+
+# JVM Performance Benchmarking
+
+## JMH, JMC, SJK etc.
+## Aug 2018
+
+.red.bold[Evan Chan]
+
+---
+
+# Agenda
+
+1. Why Benchmark?
+2. Local Benchmarking using JMH
+3. JMH + JMC
+5. Server Benchmarking using SJK
+6. Other Performance Notes
+
+---
+
+# What is JMH?
+--
+
+## JMH - Java Microbenchmark Harness
+--
+
+* Reproduce JVM optimization environment when small bits of code used in large applications
+* Properly warm up JVM to simulate long-running JVM state (eg inlining etc.)
+* Prevent over aggressive optimizations
+
+---
+
+# JMH Details
+
+http://tutorials.jenkov.com/java-performance/jmh.html#why-are-java-microbenchmarks-hard
+
+| Mode | Description |
+|-----|------|
+| Throughput | Measures the number of operations per second, meaning the number of times per second your benchmark method could be executed. |
+| Average Time | Measures the average time it takes for the benchmark method to execute (a single execution). |
+| Sample Time | Measures how long time it takes for the benchmark method to execute, including max, min time etc. |
+| Single Shot Time |  Measures how long time a single benchmark method execution takes to run. This is good to test how it performs under a cold start (no JVM warm up). |
+| All | Measures all of the above. |
+
+---
+
+# Sample JMH Benchmark Code
+
+Benchmarking a single offheap memory allocation + deallocation op
+
+```scala
+  @Benchmark
+  @BenchmarkMode(Array(Mode.Throughput))
+  @OutputTimeUnit(TimeUnit.SECONDS)
+  def nativeMemAlloc(): Unit = {
+    val ptr = TestData.nativeMem.allocateOffheap(16)
+    TestData.nativeMem.freeMemory(ptr)
+  }
+```
+
+--
+
+```
+jmh:run -rf json -i 10 -wi 10 -f3 \
+  -jvmArgsAppend -XX:MaxInlineLevel=20 -jvmArgsAppend -Xmx4g \
+  -jvmArgsAppend -XX:MaxInlineSize=99 \
+  filodb.jmh.IngestionBenchmark.nativeMemAlloc
+```
+
+* 10 iterations
+* 10 warmup iterations
+* 3 forks
+* can add other JVM args
+* can run specific benchmarks within one benchmark class
+
+---
+
+# JMH + JMC
+
+* Just run many more iterations (say -i 10000)
+* `jmc&` and record
+* profit!
+
+---
+
+# JMH Profiling
+
+```
+[info] Supported profilers:
+[info]           cl: Classloader profiling via standard MBeans
+[info]         comp: JIT compiler profiling via standard MBeans
+[info]    dtraceasm: DTrace profile provider + PrintAssembly Profiler
+[info]           gc: GC profiling via standard MBeans
+[info]        hs_cl: HotSpot (tm) classloader profiling via implementation-specific MBeans
+[info]      hs_comp: HotSpot (tm) JIT compiler profiling via implementation-specific MBeans
+[info]        hs_gc: HotSpot (tm) memory manager (GC) profiling via implementation-specific MBeans
+[info]        hs_rt: HotSpot (tm) runtime profiling via implementation-specific MBeans
+[info]       hs_thr: HotSpot (tm) threading subsystem via implementation-specific MBeans
+[info]       pauses: Pauses profiler
+[info]   safepoints: Safepoints profiler
+[info]        stack: Simple and naive Java stack profiler
+[info]
+[info] Unsupported profilers:
+[info]         perf: <none>
+[info] [Cannot run program "perf": error=2, No such file or directory]
+[info]      perfasm: <none>
+[info] [Cannot run program "perf": error=2, No such file or directory]
+[info]     perfnorm: <none>
+[info] [Cannot run program "perf": error=2, No such file or directory]
+[info]     xperfasm: <none>
+[info] [Cannot run program "xperf": error=2, No such file or directory]
+[info]
+```
+
+* perf/perfasm - very powerful assembly hotspot output, only available in Linux
+* flamegraphs available, haven't tried it yet
+
+---
+
+# SJK - Swiss Java Knife
+
+https://github.com/aragozin/jvm-tools
+
+Simple heap/CPU/profiling tools for your production apps
+
+---
+
+# SJK ttop
+
+Allocation rate and CPU usage by thread
+
+```bash
+java -jar lib/sjk.jar ttop -p 187 -n 20 -o ALLOC
+```
+
+```
+Monitoring threads ...
+
+2018-06-15T06:24:16.178+0000 Process summary
+process cpu=156.38%
+application cpu=121.33% (user=105.01% sys=16.32%)
+other: cpu=35.05%
+GC cpu=0.00% (young=0.00%, old=0.00%)
+heap allocation rate 243mb/s
+safe point rate: 1.5 (events/s) avg. safe point pause: 1.22ms
+safe point sync time: 0.02% processing time: 0.16% (wallclock time)
+[001071] user= 8.91% sys= 1.15% alloc= 20mb/s - monix-io-1071
+[001080] user= 8.72% sys= 1.07% alloc= 20mb/s - monix-io-1080
+[000872] user= 8.53% sys= 1.21% alloc= 19mb/s - monix-io-872
+[000676] user= 8.34% sys= 1.25% alloc= 19mb/s - monix-io-676
+[001217] user= 8.15% sys= 1.08% alloc= 18mb/s - monix-io-1217
+[000711] user= 7.58% sys= 1.14% alloc= 17mb/s - monix-io-711
+[001160] user= 7.39% sys= 1.00% alloc= 17mb/s - monix-io-1160
+[000768] user= 7.20% sys= 0.97% alloc= 16mb/s - monix-io-768
+[001191] user= 7.01% sys= 1.08% alloc= 15mb/s - monix-io-1191
+[000273] user= 5.50% sys= 0.94% alloc= 12mb/s - monix-io-273
+[001136] user= 1.33% sys= 0.12% alloc= 8682kb/s - filo-standalone-akka.actor.default-dispatcher-58
+[000108] user= 0.76% sys= 0.16% alloc= 6039kb/s - filo-standalone-akka.actor.default-dispatcher-2
+```
+
+---
+
+# SJK hh - heap histogram
+
+Both live objects and recently allocated garbage
+
+```bash
+java -jar lib/sjk.jar hh -p 187 —dead-young -n 50
+```
+
+```
+Gathering young garbage ...
+Warning: one or more young collections have occured during sampling.
+Use —sample-depth option to reduce time to sample if needed.
+Garbage histogram for last 10s
+# Instances Bytes Type
+1:  822738 804986760 [B
+*2: 2784843 433363440 [C*
+*3: 5575349 223013960 scala.collection.immutable.Range
+4: 4980628 119535072 filodb.query.exec.TransientRow$$anonfun$copyFrom$1
+5:   46497 113825144 [I
+6: 4623757 110970168 java.lang.Long
+7: 4567459 109619016 java.lang.Double
+8:  1469542 35269008 scala.collection.mutable.WrappedArray$ofRef
+9:  1465032 35160768 scala.collection.mutable.LinkedList*
+10:  936555 28512920 [Ljava.lang.Object;
+11: 1080823 25939752 java.lang.String
+12:  786952 18886848 [Lfilodb.query.exec.TransientRow;
+13:  773195 18556680 java.lang.StringBuilder
+14:  489492 15663744 filodb.core.memstore.TimeSeriesShard$$anonfun$getOrAddPartition$1
+```
+
+---
+
+# Process
+
+<div class="mermaid">
+  graph TB
+  Develop -->|sbt| LocalTest(jmh)
+  LocalTest --> Deploy
+  Deploy --> PerfTest(sjk)
+</div>
+
+    </textarea>
+    <script src="https://remarkjs.com/downloads/remark-latest.min.js">
+    </script>
+    <script src="../mermaid.min.js"></script>
+    <link rel="stylesheet" href="../mermaid.css">
+    <script>mermaid.initialize({startOnLoad:true});</script>
+    <script>
+      var slideshow = remark.create();
+    </script>
+  </body>
+</html>
