@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>2019 SBTB Rust Scala</title>
+    <meta charset="utf-8">
+    <style>
+      @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+      @import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
+      @import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+
+      body { font-family: 'Droid Serif'; }
+      h1, h2, h3 {
+        font-family: 'Yanone Kaffeesatz';
+        font-weight: normal;
+      }
+      .remark-code, .remark-inline-code { font-family: 'Ubuntu Mono'; }
+
+     /* Two-column layout */
+      .left-column {
+        /*color: #777;*/
+        width: 44%;
+        /*height: 92%;*/
+        float: left;
+      }
+/*        .left-column h2:last-of-type, .left-column h3:last-child {
+          color: #000;
+        }
+*/
+      .right-column {
+        width: 44%;
+        float: right;
+        /*padding-top: 1em;*/
+      }
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+class: center, middle
+
+# 2019 SBTB Rust Scala
+
+## sitting in a tree
+## Nov 2019
+
+.red[Evan Chan]
+
+---
+
+# About me
+
+* http://github.com/filodb/FiloDB
+* http://github.com/velvia
+* [@evanfchan](https://twitter.com/Evanfchan)
+* [IG: @platypus.arts](http://instagram.com/platypus.arts)
+
+---
+
+# Why Rust?
+
+What, isn’t Scala perfect?
+
+```rust
+  fn main() {
+    println!("foo!");
+  }
+```
+
+* Scala and JVM works very well for a wide variety of applications
+* Fun to study and compare programming languages and *paradigms*!
+* JVM has some limitations - big footprint, GC, etc.
+
+---
+
+# Architectural Trends
+
+* CPUs aren't getting faster
+* Extracting more from current CPUs is more important now
+  * GPUs, SIMD, etc.
+* Multi-core -> concurrency is really important
+* Hackers getting more sophisticated
+
+---
+
+# Rust and Values
+
+* Pick 3 - performance, safety, and high-level abstractions
+* "It’s basically C++ with newer syntax that guides programmer towards safety still allowing low-level control, how does it do it?" .red[*]
+
+What are Scala's values?
+
+---
+
+# Rust - a Data-Oriented Language
+
+.left-column[
+  ### Scala/Java
+  * Classes and objects
+  * Inheritance
+  * Traits as .class files
+]
+.right-column[
+  ### Rust
+  * Structs with methods
+  * Composition
+  * No inheritance
+  * "Ad-hoc" Traits
+]
+
+---
+
+class: center, middle
+
+# Memory Model and Memory Safety
+
+---
+
+# Scala Memory Model
+
+.left-column[
+  ### Stack
+  * Primitives
+  * References to objects
+]
+.right-column[
+  ### Heap
+  * Objects - everything non-primitive
+]
+
+---
+
+# Rust Memory Model
+
+.left-column[
+  ### Stack
+  * Primitives
+  * Structs (fixed size)
+  * Fixed size arrays
+  * Pointers/references
+]
+.right-column[
+  ### Heap
+  * Vecs (lists, arrays)
+  * Strings
+  * Dynamic-sized objects
+]
+
+---
+
+# Rust Memory Model: Safety
+
+Simple principle:
+
+### Allow mutation only if someone has *unique* access to data.
+
+Rust's compiler tries to prove who has unique access.
+
+---
+
+# Rust: Ownership
+
+```rust
+// invalid
+let x = String::from("hello");
+let y = x;
+println!("{}", x);
+```
+
+* Heap objects deallocated when variables go out of scope
+* x is initial owner
+* ownership transferred to y - for strings, data is not copied
+* last line does not compile: as x is no longer owner
+* single ownership guarantees no reference possible after memory freed
+* Scoping and ownership ensure objects are valid when referenced
+
+---
+
+# Rust: Borrowing
+
+```rust
+let x = String::from("hello");
+let y = &x ;
+println!("{}", x);
+println!("{}", y);
+```
+
+* Unlimited number of immutable references / readers
+* Only one mutable reference `&mut T` allowed
+  * and only those with unique ownership can create a mutable ref
+* References cannot outlive the scope of original variable
+
+---
+
+# Using Type System for Safety
+
+Traits in Rust to prevent memory and concurrency safety issues at compile time:
+
+* `T: Move` - lists/arrays; ownership transfers to new owner
+* `T: Copy` - primitives and structs are copied, independent mutation possible
+* `T: Send` - one thread at a time has exclusive ownership/borrowing
+* `T: Sync` - multi-threaded ownership/sharing
+
+---
+
+class: center, middle
+
+# Safety by Default
+
+---
+
+# Immutability
+
+### Scala: Surface-level immutability, opt-in
+
+```scala
+  val map = new collection.mutable.HashMap[String, String]()
+  map += "mykey" -> "myvalue"
+```
+
+* `val` just means reference is immutable, but object itself is mutable
+* Programmer has to opt-in to immutability by choosing immutable data structures
+
+---
+
+# Immutability
+
+### Rust: Immutable by default, Deep Immutability
+
+```rust
+use std::collections::HashMap;
+fn test() {
+    let map = HashMap::new();
+    map.insert("key1", "value1");
+}
+```
+
+The above does not compile, since map is declared by default as immutable and we want to mutate the map.
+Note that all APIs have strong notions of mutability baked in.
+
+```rust
+error[E0596]: cannot borrow `map` as mutable, as it is not declared as mutable
+  --> src/lib.rs:16:5
+   |
+15 |     let map = HashMap::new();
+   |         --- help: consider changing this to be mutable: `mut map`
+16 |     map.insert("key1", "value1");
+   |     ^^^ cannot borrow as mutable
+```
+
+???
+Rust does not allow mutation by default.  One has to opt-in to mutation by declaring `let mut`
+BTW notice that types are not needed when declaring HashMap, Rust has more advanced type derivation...
+
+---
+
+# Immutability: Objects vs References
+
+```rust
+use std::collections::HashMap;
+fn test() {
+    let mut map = HashMap::new();
+    map.insert("key1", "value1");
+    let immut_ref = &map ;
+    immut_ref.insert("key2", "value2");
+}
+```
+
+You can have an immutable reference to a mutable object, so that those given immutable references can only read and not mutate.  Above, we can insert into a mutable map, but mutating using an immutable reference results in a compilation error.
+
+```rust
+error[E0596]: cannot borrow `*immut_ref` as mutable, as it is behind a `&` reference
+  --> src/lib.rs:18:5
+   |
+17 |     let immut_ref = &map ;
+   |                     ---- help: consider changing this to be a mutable reference: `&mut map`
+18 |     immut_ref.insert("key2", "value2");
+   |     ^^^^^^^^^ `immut_ref` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+```
+
+Notice that `rustc` gives you a help in the error message as to how it can be solved.
+
+---
+
+# Thread Safety
+
+### Scala Actor Example
+
+You think, OK an Actor is single-threaded right?  So let me do this:
+
+```scala
+class MyActor extends Actor {
+  val map = new collections.mutable.HashMap[String, String]
+  def receive = {
+    case Mutate(k, v) =>
+      someFuture.map {
+        // Uh oh, this is a diff thread, but easy to forget!
+        map += (k, v)
+      }
+  }
+}
+```
+
+Common mistake - use a non-thread-safe data structure mutably in another thread
+
+---
+
+# Thread Safety - Rust
+
+Rust prevents the following problems via compiler errors:
+* Sharing a reference with another thread could lead to invalid references if the original value is freed (lifetime checks)
+* Using a mutable reference in another thread - unless the original data is thread safe (implements `Sync`)
+
+```rust
+    let mut map = HashMap::new();
+    map.insert("key1", "value1");
+    let shared_ref = Arc::new(map);
+    let h = {
+        let shared1 = Arc::clone(&shared_ref);
+        thread::spawn(move || shared1.insert("key1", "val1").is_some())
+    };
+```
+
+```rust
+error[E0596]: cannot borrow data in an `Arc` as mutable
+  --> src/lib.rs:23:31
+   |
+23 |         thread::spawn(move || shared1.insert("key1", "val1").is_some())
+   |                               ^^^^^^^ cannot borrow as mutable
+   |
+   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `std::sync::Arc<std::collections::HashMap<&str, &str>>`
+```
+
+---
+
+# Null Safety
+
+### Scala
+
+This is possible: `Some(null)`
+
+### Rust
+
+* No null value at all
+* In fact, references to random memory addresses can't be created (*)
+* Use of `Option` type is very cheap and used in virtually all APIs where absence of value is possible
+
+???
+Unless you use unsafe stuff in Rust
+
+---
+
+# Error Handling
+
+Universal use of a `Result<T, E>` trait
+
+```rust
+fn read_username_from_file() -> Result<String, io::Error> {
+    let mut f = File::open("hello.txt")?;
+    let mut s = String::new();
+    f.read_to_string(&mut s)?;
+    Ok(s)
+}
+```
+
+is shortcut for:
+
+```rust
+fn read_username_from_file() -> Result<String, io::Error> {
+    let f = File::open("hello.txt");
+
+    let mut f = match f {
+        Ok(file) => file,
+        Err(e) => return Err(e),
+    };
+
+    let mut s = String::new();
+
+    match f.read_to_string(&mut s) {
+        Ok(_) => Ok(s),
+        Err(e) => Err(e),
+    }
+}
+```
+
+---
+
+# Safe Numeric Processing
+
+* Rust does not coerce `Ints` to `Longs` and so forth automatically
+* Explicit signed and unsigned types, operators like `>>` appropriate to sign-ness
+* Different methods for handling overflows
+* 128-bit primitive type is kinda cool
+
+---
+
+# Concurrency
+
+.left-column[
+  ### Scala
+  * Library-based, built on JVM threads
+  * Futures (built-in)
+  * Huge ecosystem: Akka, Monix, etc. etc.
+  * Safety is opt-in
+]
+.right-column[
+  ### Rust
+  * Built-in async/await, Future
+  * Built-in primitives (thread, mutex, RwLock, Arc, ...)
+  * Safety enforced through lifetimes and traits (Send, Sync)
+  * Library-based: Actix (actors), Tokio, etc.
+  * Just getting started
+]
+
+---
+
+# Concurrency: Options
+
+Choose an option to satisfy the compiler:
+* Safe threaded access via locking: `RwLock`, `Mutex`, `Arc`
+* Use multi-thread safe data structures
+* Use channels to communicate with a single thread
+* Third party libraries:
+  * https://tokio.rs
+  * https://github.com/actix/actix
+
+Theme: rustc prevents mistakes, and forces you to pick explicit options.  Also provides non-thread-safe options that are higher-performance, and prevents sharing of those across threads.
+
+---
+
+# Async-Await example
+
+Async code that looks like synchronous code:
+(This used to be called CSP in Scala)
+
+```rust
+async fn handle_get_counters(
+    &self,
+    p: &mut P::Deserializer,
+) -> Result<ProtocolEncodedFinal<P>, Error> {
+    let args = {/* snip: some code using `?` */};
+    let res = self.service.get_counters(args).await?;
+    let enc = write_message(p, "getCounters", MessageType::Reply, |p| res.write(p))?;
+    Ok(enc)
+}
+```
+
+The `await` after get_counters causes that thread to be suspended, other tasks can then be multiplexed.
+
+(from https://docs.rs/dtolnay/0.0.3/dtolnay/macro._01__await_a_minute.html)
+
+---
+
+# Aside: Asynchronous stack traces in Rust
+
+```rust
+thread 'async-task-driver' panicked at 'nested async panic!', src/main.rs:42:5
+stack backtrace:
+...
+   8: async_stack_traces::blow_up::{{closure}}
+             at src/main.rs:42
+...
+  15: async_stack_traces::bar::{{closure}}
+             at src/main.rs:37
+...
+  22: async_stack_traces::foo::{{closure}}
+             at src/main.rs:32
+...
+```
+
+---
+
+# Scala: Functional Transform Example
+
+```scala
+object CountEvens {
+  def apply(numbers: Seq[Int]): Int =
+    numbers.filter(n => (n % 2) == 0).length
+}
+```
+
+--
+
+```
+public int apply(scala.collection.Seq<java.lang.Object>);
+    descriptor: (Lscala/collection/Seq;)I
+    flags: ACC_PUBLIC
+    Code:
+      stack=3, locals=2, args_size=2
+         0: aload_1
+         1: new           #16                 // class CountEvens$$anonfun$apply$1
+         4: dup
+         5: invokespecial #17                 // Method CountEvens$$anonfun$apply$1."<init>":()V
+         8: invokeinterface #23,  2           // InterfaceMethod scala/collection/Seq.filter:(Lscala/Function1;)Ljava/lang/Object;
+```
+
+* Object allocation: the inner closure is a Function1, must be initialized
+
+---
+
+# Scala: Functional Transform Example (II)
+
+```
+ public final java.lang.Object apply(java.lang.Object);
+    descriptor: (Ljava/lang/Object;)Ljava/lang/Object;
+    flags: ACC_PUBLIC, ACC_FINAL, ACC_BRIDGE, ACC_SYNTHETIC
+    Code:
+      stack=2, locals=2, args_size=2
+         0: aload_0
+         1: aload_1
+         2: invokestatic  #31                 // Method scala/runtime/BoxesRunTime.unboxToInt:(Ljava/lang/Object;)I
+         5: invokevirtual #33                 // Method apply:(I)Z
+         8: invokestatic  #37                 // Method scala/runtime/BoxesRunTime.boxToBoolean:(Z)Ljava/lang/Boolean;
+        11: areturn
+```
+
+* Scala closures are boxed.  Thus, each Int needs to be boxed, passed to the apply() method of the closure as `java.lang.Object`, then unboxed
+* The boolean result of the `filter` method needs to be boxed to `java.lang.Boolean`
+* Due to the virtual interface method, and the many implementations of function1, the JVM probably cannot inline this method
+
+---
+
+# Rust: Performance AND Abstractions
+
+Rust OTOH is able to fully optimize nice functional transforms with inlining and no boxing.
+
+```rust
+pub fn count_evens(nums: Vec<i32>) -> usize {
+    nums.iter().filter(|&x| x % 2 == 0).count()
+}
+```
+
+The transform above is compiled into a very tight register-only loop: 100% inlined, no allocations, no method calls
+
+```
+     mov     rdi, qword, ptr, [rdi]
+     mov     rcx, qword, ptr, [rax, +, 16]
+     test    rcx, rcx
+     je      LBB37_1
+     lea     rdx, [4*rcx, -, 4]
+     shr     rdx, 2
+     inc     rdx
+     cmp     rdx, 4
+     jae     LBB37_4
+     xor     ebx, ebx
+     mov     rdx, rdi
+     jmp     LBB37_12
+LBB37_1:
+```
+
+---
+
+# Use case: Rust in Data Processing
+
+* Safe low-level manipulation (structs, exact layout, memory safety)
+* C-like performance with no-cost abstractions
+* Safety: no numeric coercion; control over boundary conditions
+* Exact control of memory allocation for large datasets
+* Use high-level constructs without GC pauses
+* Easy SIMD, GPU access, easy integration with native libraries
+  * Tensorflow, BLAS, RocksDB, etc. etc.
+* Super fast UTF8 processing performance for NLP, regex etc.
+
+---
+
+# Rust Data Processing Apps
+
+* [Timely Dataflow](https://github.com/TimelyDataflow/timely-dataflow) - distributed data-parallel compute engine
+* [DataFusion](https://arrow.apache.org/blog/2019/02/04/datafusion-donation/) - Apache Arrow's query engine
+* [Weld](https://github.com/weld-project/weld) - Stanford's hi-perf runtime for analytics
+
+* [MinSQL](https://github.com/minio/minsql/blob/master/README.md)
+* [Sled](https://github.com/spacejam/sled) - lock-free database engine
+* [Ripgrep](https://github.com/BurntSushi/ripgrep) - insanely fast grep utility
+
+* [Are we learning yet?](http://www.arewelearningyet.com) - list of ML Rust crates
+
+---
+
+# Rust vs Scala, or Rust + Scala?
+
+.left-column[
+  ### Rust Standalone
+  * Complete, standalone Rust app
+  * Good for trying out in microservice architecture
+]
+.right-column[
+  ### Rust + Scala
+  * Use Scala for what it's good at: coordination, networking, distributed systems
+  * Embed some Rust for high-performance data processing / concurrency with no bugs
+  * Use Rust as a .so / .dylib within JVM
+]
+
+---
+
+# Rust + Scala
+
+* [JnrFFI](https://github.com/jnr/jnr-ffi) - call into Rust via C FFI.
+  * Fast, simple, no SWAG/headers to compile
+* [j4rs](https://astonbitecode.github.io/blog/post/j4rs_0.6.0/) for calling Java from Rust
+* [JavaCPP](https://github.com/bytedeco/javacpp)
+
+---
+
+# Other neat type-level stuff
+
+Typestate pattern in Rust: http://cliffle.com/blog/rust-typestate/
+
+* Allow operations only for certain types/states
+* Static nature of Rust traits lets you define methods only when a trait has parameter of certain type
+
+```rust
+/// Operations that are valid only in Start state.
+impl HttpResponse<Start> {
+    fn status_line(self, code: u8, message: &str)
+        -> HttpResponse<Headers>
+    {
+        // ...
+    }
+}
+
+/// Operations that are valid only in Headers state.
+impl HttpResponse<Headers> {
+    fn header(&mut self, key: &str, value: &str) {
+        // ...
+    }
+
+    fn body(self, contents: &str) {
+        // ...
+    }
+}
+```
+
+---
+
+# Thank You Very Much
+
+More links:
+
+* https://github.com/velvia/links/blob/master/rust.md
+
+    </textarea>
+    <script src="https://remarkjs.com/downloads/remark-latest.min.js">
+    </script>
+    <script>
+      var slideshow = remark.create();
+    </script>
+  </body>
+</html>
