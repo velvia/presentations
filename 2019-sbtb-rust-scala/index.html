@@ -38,10 +38,9 @@
 
 class: center, middle
 
-# 2019 SBTB Rust Scala
+# Rust and Scala, Sitting in a Tree
 
-## sitting in a tree
-## Nov 2019
+## Scale by the Bay - Nov 2019
 
 .red[Evan Chan]
 
@@ -56,31 +55,49 @@ class: center, middle
 
 ---
 
-# Why Rust?
-
-What, isn’t Scala perfect?
+# Hello Rust
 
 ```rust
   fn main() {
-    println!("foo!");
+    println!("Hello World!");
   }
 ```
 
-* Scala and JVM works very well for a wide variety of applications
-* Fun to study and compare programming languages and *paradigms*!
-* JVM has some limitations - big footprint, GC, etc.
+---
+
+# How I Got Into Rust
+
+* FiloDB - in memory TSDB
+  * 100 billion compressed data points on single node
+  * Almost 100% Scala
+* Storing data on heap was not feasible
+  * Object graphs had >50% overhead
+  * nasty and unpredictable GC issues
+
+???
+Thought I'd talk about something a bit more universal than in memory DBs.. :)
+
+--
+
+* .red[*but managing offheap memory manually is hard!*]
+* Byte-level high performance data manipulation is nasty in JVM and very error prone
 
 ---
 
-# Architectural Trends
+# How I Got Into Rust (II)
 
-* CPUs aren't getting faster
-* Extracting more from current CPUs is more important now
-  * GPUs, SIMD, etc.
-* Multi-core -> concurrency is really important
-* Hackers getting more sophisticated
+2018 SBTB: Brian Cantrill
+(https://www.youtube.com/watch?v=2wZ1pCpJUIM)
 
----
+* Rust: "Pick 3 - performance, safety, and high-level abstractions"
+* Structs for efficient + safe low level data processing
+* Provably correct native memory management
+* Super high performance ceiling with SIMD
+* Takes great advantage of architectural trends
+  * CPUs not getting faster
+  * Safe concurrency, GPU, SIMD, efficient memory use, XPoint, etc.
+
+<!-- ---
 
 # Rust and Values
 
@@ -89,24 +106,7 @@ What, isn’t Scala perfect?
 
 What are Scala's values?
 
----
-
-# Rust - a Data-Oriented Language
-
-.left-column[
-  ### Scala/Java
-  * Classes and objects
-  * Inheritance
-  * Traits as .class files
-]
-.right-column[
-  ### Rust
-  * Structs with methods
-  * Composition
-  * No inheritance
-  * "Ad-hoc" Traits
-]
-
+ -->
 ---
 
 class: center, middle
@@ -129,6 +129,25 @@ class: center, middle
 
 ---
 
+# Scala Memory Model - GC
+
+<div class="mermaid">
+  graph LR
+  OBJ1 --> OBJ2
+  OBJ2 --> OBJ3
+  OBJ2 --> Array4
+  Array4 --> Elem0
+  Array4 --> Elem1
+</div>
+
+JVM has the best garbage collection tech, hands down.
+Makes many things super convenient.
+Really good fit for short- and medium- term data.
+Solves reliable sharing of data.
+Does have a cost.
+
+---
+
 # Rust Memory Model
 
 .left-column[
@@ -143,6 +162,8 @@ class: center, middle
   * Vecs (lists, arrays)
   * Strings
   * Dynamic-sized objects
+
+  Rust has no GC - how does it manage heap memory?
 ]
 
 ---
@@ -188,6 +209,12 @@ println!("{}", y);
 * Only one mutable reference `&mut T` allowed
   * and only those with unique ownership can create a mutable ref
 * References cannot outlive the scope of original variable
+
+---
+
+class: center, middle
+
+Conor McBride: "sometimes it's easier to search for good programs in the space of well typed programs rather than in the space of ASCII turds"
 
 ---
 
@@ -349,123 +376,77 @@ Unless you use unsafe stuff in Rust
 
 ---
 
-# Error Handling
-
-Universal use of a `Result<T, E>` trait
-
-```rust
-fn read_username_from_file() -> Result<String, io::Error> {
-    let mut f = File::open("hello.txt")?;
-    let mut s = String::new();
-    f.read_to_string(&mut s)?;
-    Ok(s)
-}
-```
-
-is shortcut for:
-
-```rust
-fn read_username_from_file() -> Result<String, io::Error> {
-    let f = File::open("hello.txt");
-
-    let mut f = match f {
-        Ok(file) => file,
-        Err(e) => return Err(e),
-    };
-
-    let mut s = String::new();
-
-    match f.read_to_string(&mut s) {
-        Ok(_) => Ok(s),
-        Err(e) => Err(e),
-    }
-}
-```
-
----
-
 # Safe Numeric Processing
 
 * Rust does not coerce `Ints` to `Longs` and so forth automatically
 * Explicit signed and unsigned types, operators like `>>` appropriate to sign-ness
+  * Scala: you have to pick right operator (`>>` vs `>>>`) depending on if you want signed or unsigned shift.
+  * Opt-in correctness  :(
+  * Rust: `u16 >>` is unsigned shift, `i16 >>` is a signed shift.  Type and compiler enforced!
 * Different methods for handling overflows
+  * `checked_add`
+  * `overflowing_add`
+  * `saturating_add`
 * 128-bit primitive type is kinda cool
 
 ---
 
-# Concurrency
+class: center, middle
 
-.left-column[
-  ### Scala
-  * Library-based, built on JVM threads
-  * Futures (built-in)
-  * Huge ecosystem: Akka, Monix, etc. etc.
-  * Safety is opt-in
-]
-.right-column[
-  ### Rust
-  * Built-in async/await, Future
-  * Built-in primitives (thread, mutex, RwLock, Arc, ...)
-  * Safety enforced through lifetimes and traits (Send, Sync)
-  * Library-based: Actix (actors), Tokio, etc.
-  * Just getting started
-]
+# Performance AND Abstrations
 
 ---
 
-# Concurrency: Options
+# Structs and Performance
 
-Choose an option to satisfy the compiler:
-* Safe threaded access via locking: `RwLock`, `Mutex`, `Arc`
-* Use multi-thread safe data structures
-* Use channels to communicate with a single thread
-* Third party libraries:
-  * https://tokio.rs
-  * https://github.com/actix/actix
+Really big deal for data processing and databases.
 
-Theme: rustc prevents mistakes, and forces you to pick explicit options.  Also provides non-thread-safe options that are higher-performance, and prevents sharing of those across threads.
+Example1: Scala object graph, from FiloDB, bunch of case classes
+
+```scala
+final case class ChunkQueryInfo(info: ChunkSetInfo,
+                                tsReader: LongDataReader, valueReader: VectorDataReader)
+final case class ChunkSetInfo(id: Long, startTime: Long, endTime: Long,
+                              numRows: Int, chunks: Seq[ChunkPointer])
+val chunksToQuery: Seq[ChunkQueryInfo]
+```
+
+Memory Usage:
+* `ChunkQueryInfo` - 8/16 byte header + 3 references
+* LondDataReader and VectorDataReaders - 8/16 byte headers + fields
+* `ChunkSetInfo` - 8/16 byte header + 28 bytes fields + reference
+* `Seq[ChunkPointer]` - 8/16 bytes each for Seq + Array headers, + `java.lang.Long` for each element (boxing)
+
+For chunks length of 2, each `ChunkQueryInfo` has an object overhead of up to 128 bytes, around same size as size of fields themselves!
 
 ---
 
-# Async-Await example
-
-Async code that looks like synchronous code:
-(This used to be called CSP in Scala)
+# Structs in Rust
 
 ```rust
-async fn handle_get_counters(
-    &self,
-    p: &mut P::Deserializer,
-) -> Result<ProtocolEncodedFinal<P>, Error> {
-    let args = {/* snip: some code using `?` */};
-    let res = self.service.get_counters(args).await?;
-    let enc = write_message(p, "getCounters", MessageType::Reply, |p| res.write(p))?;
-    Ok(enc)
+struct ChunkQueryInfo {
+  info: ChunkSetInfo,
+  ts_reader: LongDataReader,
+  valueReader: VectorDataReader
+}
+struct ChunkSetInfo {
+  id: u64,
+  start_time: u64,
+  end_time: u64,
+  num_rows: u32,
+  chunks: Vec<&Chunk>
 }
 ```
 
-The `await` after get_counters causes that thread to be suspended, other tasks can then be multiplexed.
+* Inlined structs allow Rust to save memory:
+  * No object overhead, Vec has struct of 24 bytes (x86_64) vs 8 for a reference
+  * 112 byte advantage per `ChunkQueryInfo`
+* Rust performance advantage: returning structs on stack vs object allocation
+  * Performance + safety: fearlessly use Option everywhere
+* In Scala, we ended up moving above graph to offheap, which made debugging and readability much much harder
 
-(from https://docs.rs/dtolnay/0.0.3/dtolnay/macro._01__await_a_minute.html)
-
----
-
-# Aside: Asynchronous stack traces in Rust
-
-```rust
-thread 'async-task-driver' panicked at 'nested async panic!', src/main.rs:42:5
-stack backtrace:
-...
-   8: async_stack_traces::blow_up::{{closure}}
-             at src/main.rs:42
-...
-  15: async_stack_traces::bar::{{closure}}
-             at src/main.rs:37
-...
-  22: async_stack_traces::foo::{{closure}}
-             at src/main.rs:32
-...
-```
+???
+I've found myself, SO many times, choosing a hack in FiloDB just to avoid object allocations on returns.  This is a serious JVM deficiency for high-performance code.
 
 ---
 
@@ -576,6 +557,146 @@ LBB37_1:
 
 ---
 
+# Concurrency
+
+.left-column[
+  ### Scala
+  * Library-based, built on JVM threads
+  * Futures (built-in)
+  * Huge ecosystem: Akka, Monix, etc. etc.
+  * Safety is opt-in
+]
+.right-column[
+  ### Rust
+  * Built-in async/await, Future
+  * Built-in primitives (thread, mutex, RwLock, Arc, ...)
+  * Safety enforced through lifetimes and traits (Send, Sync)
+  * Library-based: Actix (actors), Tokio, etc.
+  * Just getting started
+]
+
+---
+
+# Concurrency: Options
+
+Choose an option to satisfy the compiler:
+* Safe threaded access via locking: `RwLock`, `Mutex`, `Arc`
+* Use multi-thread safe data structures
+* Use channels to communicate with a single thread
+* Third party libraries:
+  * https://tokio.rs
+  * https://github.com/actix/actix
+
+Theme: rustc prevents mistakes, and forces you to pick explicit options.  Also provides non-thread-safe options that are higher-performance, and prevents sharing of those across threads.
+
+---
+
+# Async-Await example
+
+Async code that looks like synchronous code:
+(This used to be called CSP in Scala)
+
+```rust
+async fn handle_get_counters(
+    &self,
+    p: &mut P::Deserializer,
+) -> Result<ProtocolEncodedFinal<P>, Error> {
+    let args = {/* snip: some code using `?` */};
+    let res = self.service.get_counters(args).await?;
+    let enc = write_message(p, "getCounters", MessageType::Reply, |p| res.write(p))?;
+    Ok(enc)
+}
+```
+
+The `await` after get_counters causes that thread to be suspended, other tasks can then be multiplexed.
+
+(from https://docs.rs/dtolnay/0.0.3/dtolnay/macro._01__await_a_minute.html)
+
+---
+
+# Aside: Asynchronous stack traces in Rust
+
+```rust
+thread 'async-task-driver' panicked at 'nested async panic!', src/main.rs:42:5
+stack backtrace:
+...
+   8: async_stack_traces::blow_up::{{closure}}
+             at src/main.rs:42
+...
+  15: async_stack_traces::bar::{{closure}}
+             at src/main.rs:37
+...
+  22: async_stack_traces::foo::{{closure}}
+             at src/main.rs:32
+...
+```
+
+---
+
+# Rust - a Data-Oriented Language
+
+.left-column[
+  ### Scala/Java
+  * Classes and objects
+  * Inheritance
+  * Traits as .class files
+]
+.right-column[
+  ### Rust
+  * Structs with methods
+  * Composition
+  * No inheritance
+  * Prefer static dispatch when possible
+]
+
+---
+
+# Macros
+
+* Standard language feature
+* Used everywhere: `println!`, `vec!`, `dbg!`, etc. etc.
+* AST-based, similar to Scala macros
+
+New syntax (-ish):
+```rust
+let map = hashmap!{
+    "a" => 1,
+    "b" => 2,
+};
+```
+
+Automatic method/trait derivation:
+```rust
+#[derive(Serialize, Deserialize)]
+struct S {
+    #[serde(rename = "a")]
+    f: i32,
+}
+```
+
+(Examples from https://words.steveklabnik.com/an-overview-of-macros-in-rust)
+
+---
+
+# Lessons Learned
+
+* Getting past borrow checker and compiler errors is hard at first.
+  * Discord, Rust community everywhere is super helpful
+* Hard to get used to language without REPL
+* Cargo is fairly awesome build tool.  Sorry, way ahead of SBT.
+* JVM/Scala is probably more productive for many use cases. But where Rust is good, it's really good
+
+* Learning Rust has improved my programming everywhere; especially about what it means to be safe.
+* Rust works because safety is *universal* and *pervasive*, and the community has made it a priority
+  * Partial safety is not real safety
+  * Rust forces safety to be IN YOUR FACE ALL THE TIME.
+* Being welcoming and inclusive has to be a foundational value of a community, hard to add it after the fact
+
+???
+In your face  - maybe that's the way it should be
+
+---
+
 # Rust vs Scala, or Rust + Scala?
 
 .left-column[
@@ -598,6 +719,53 @@ LBB37_1:
   * Fast, simple, no SWAG/headers to compile
 * [j4rs](https://astonbitecode.github.io/blog/post/j4rs_0.6.0/) for calling Java from Rust
 * [JavaCPP](https://github.com/bytedeco/javacpp)
+
+Example:
+* Use Scala/JVM for Zookeeper, distributed coordination, integration layers
+* Use Rust for high-performance, memory-heavy portion
+
+---
+
+# Taking Safety back to Scala from Rust
+
+```scala
+  final case class U8(addr: Long) extends AnyVal {
+    // Simple pointer math, by # of U8 elements (bytes)
+    final def add(offset: Int): U8 = U8(addr + offset)
+    //scalastyle:off method.name
+    final def +(offset: Int): U8 = U8(addr + offset)
+
+    final def getU8: Int = UnsafeUtils.getByte(addr) & 0x00ff
+
+    final def asU16: U16 = U16(addr)
+    final def asI32: I32 = I32(addr)
+    final def asMut: MutU8 = MutU8(addr)
+  }
+
+  final case class MutU8(addr: Long) extends AnyVal {
+    final def set(num: Int): Unit = UnsafeUtils.setByte(addr, num.toByte)
+  }
+```
+
+For offheap data management: explicit Ptr type >> using Longs or type aliases; separate Mutable type; explicit conversions to different widths
+
+---
+
+# Thank You Very Much
+
+More links:
+
+* https://github.com/velvia/links/blob/master/rust.md
+
+---
+
+class: center, middle
+
+# Extra Slides
+
+---
+
+# Look, you can still do FP
 
 ---
 
@@ -630,17 +798,12 @@ impl HttpResponse<Headers> {
 }
 ```
 
----
-
-# Thank You Very Much
-
-More links:
-
-* https://github.com/velvia/links/blob/master/rust.md
-
     </textarea>
     <script src="https://remarkjs.com/downloads/remark-latest.min.js">
     </script>
+    <script src="../mermaid.min.js"></script>
+    <link rel="stylesheet" href="../mermaid.css">
+    <script>mermaid.initialize({startOnLoad:true});</script>
     <script>
       var slideshow = remark.create();
     </script>
