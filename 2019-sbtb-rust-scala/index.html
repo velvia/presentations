@@ -55,13 +55,11 @@ class: center, middle
 
 ---
 
-# Hello Rust
+# Goals
 
-```rust
-  fn main() {
-    println!("Hello World!");
-  }
-```
+* Compare Rust and Scala in terms of safety and performance + abstractions
+* Lessons learned
+* Integration of Rust and Scala
 
 ---
 
@@ -75,23 +73,26 @@ class: center, middle
   * nasty and unpredictable GC issues
 
 ???
-Thought I'd talk about something a bit more universal than in memory DBs.. :)
+Thought I'd talk about something a bit more universal than in memory DBs..
 
 --
 
 * .red[*but managing offheap memory manually is hard!*]
 * Byte-level high performance data manipulation is nasty in JVM and very error prone
 
+???
+I have a confession to make.  The last three years, I stood on stage proclaiming how great
+of a TSDB we wrote, and how awesome we are able to squeeze awesome performance with offheap memory.  And they were great innovations - but they led to some really nasty long term code debt and problems.
+
 ---
 
 # How I Got Into Rust (II)
 
-2018 SBTB: Brian Cantrill
-(https://www.youtube.com/watch?v=2wZ1pCpJUIM)
+2018 [SBTB: Brian Cantrill](https://www.youtube.com/watch?v=2wZ1pCpJUIM)
 
 * Rust: "Pick 3 - performance, safety, and high-level abstractions"
 * Structs for efficient + safe low level data processing
-* Provably correct native memory management
+* Provably correct native memory management and concurrency
 * Super high performance ceiling with SIMD
 * Takes great advantage of architectural trends
   * CPUs not getting faster
@@ -140,6 +141,9 @@ class: center, middle
   Array4 --> Elem1
 </div>
 
+Automatic cleanup of "dead" objects
+
+???
 JVM has the best garbage collection tech, hands down.
 Makes many things super convenient.
 Really good fit for short- and medium- term data.
@@ -174,7 +178,7 @@ Simple principle:
 
 ### Allow mutation only if someone has *unique* access to data.
 
-Rust's compiler tries to prove who has unique access.
+If your Rust program compiles, then it is free of memory corruption bugs and data races. Period.
 
 ---
 
@@ -187,12 +191,15 @@ let y = x;
 println!("{}", x);
 ```
 
-* Heap objects deallocated when variables go out of scope
 * x is initial owner
-* ownership transferred to y - for strings, data is not copied
+* ownership transferred to y -
+  * x goes out of scope, deallocated
 * last line does not compile: as x is no longer owner
 * single ownership guarantees no reference possible after memory freed
 * Scoping and ownership ensure objects are valid when referenced
+
+???
+for strings, data is not copied
 
 ---
 
@@ -207,14 +214,10 @@ println!("{}", y);
 
 * Unlimited number of immutable references / readers
 * Only one mutable reference `&mut T` allowed
-  * and only those with unique ownership can create a mutable ref
+
+???
+* and only those with unique ownership can create a mutable ref
 * References cannot outlive the scope of original variable
-
----
-
-class: center, middle
-
-Conor McBride: "sometimes it's easier to search for good programs in the space of well typed programs rather than in the space of ASCII turds"
 
 ---
 
@@ -222,7 +225,6 @@ Conor McBride: "sometimes it's easier to search for good programs in the space o
 
 Traits in Rust to prevent memory and concurrency safety issues at compile time:
 
-* `T: Move` - lists/arrays; ownership transfers to new owner
 * `T: Copy` - primitives and structs are copied, independent mutation possible
 * `T: Send` - one thread at a time has exclusive ownership/borrowing
 * `T: Sync` - multi-threaded ownership/sharing
@@ -245,7 +247,7 @@ class: center, middle
 ```
 
 * `val` just means reference is immutable, but object itself is mutable
-* Programmer has to opt-in to immutability by choosing immutable data structures
+* Programmer has to opt-in to immutability
 
 ---
 
@@ -261,8 +263,7 @@ fn test() {
 }
 ```
 
-The above does not compile, since map is declared by default as immutable and we want to mutate the map.
-Note that all APIs have strong notions of mutability baked in.
+Compile error:
 
 ```rust
 error[E0596]: cannot borrow `map` as mutable, as it is not declared as mutable
@@ -276,6 +277,7 @@ error[E0596]: cannot borrow `map` as mutable, as it is not declared as mutable
 
 ???
 Rust does not allow mutation by default.  One has to opt-in to mutation by declaring `let mut`
+Note that all APIs have strong notions of mutability baked in.
 BTW notice that types are not needed when declaring HashMap, Rust has more advanced type derivation...
 
 ---
@@ -292,7 +294,7 @@ fn test() {
 }
 ```
 
-You can have an immutable reference to a mutable object, so that those given immutable references can only read and not mutate.  Above, we can insert into a mutable map, but mutating using an immutable reference results in a compilation error.
+Compile error: immutable ref for mutable object
 
 ```rust
 error[E0596]: cannot borrow `*immut_ref` as mutable, as it is behind a `&` reference
@@ -304,6 +306,7 @@ error[E0596]: cannot borrow `*immut_ref` as mutable, as it is behind a `&` refer
    |     ^^^^^^^^^ `immut_ref` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 ```
 
+???
 Notice that `rustc` gives you a help in the error message as to how it can be solved.
 
 ---
@@ -311,8 +314,6 @@ Notice that `rustc` gives you a help in the error message as to how it can be so
 # Thread Safety
 
 ### Scala Actor Example
-
-You think, OK an Actor is single-threaded right?  So let me do this:
 
 ```scala
 class MyActor extends Actor {
@@ -329,13 +330,16 @@ class MyActor extends Actor {
 
 Common mistake - use a non-thread-safe data structure mutably in another thread
 
+???
+So you go, Actors can only process a single message at a time, I can use mutable.HashMap right?
+
 ---
 
 # Thread Safety - Rust
 
-Rust prevents the following problems via compiler errors:
-* Sharing a reference with another thread could lead to invalid references if the original value is freed (lifetime checks)
-* Using a mutable reference in another thread - unless the original data is thread safe (implements `Sync`)
+`rustc` prevents:
+* Sharing an invalid/freed reference across threads
+* Using a mutable reference in another thread
 
 ```rust
     let mut map = HashMap::new();
@@ -357,30 +361,16 @@ error[E0596]: cannot borrow data in an `Arc` as mutable
    = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `std::sync::Arc<std::collections::HashMap<&str, &str>>`
 ```
 
----
-
-# Null Safety
-
-### Scala
-
-This is possible: `Some(null)`
-
-### Rust
-
-* No null value at all
-* In fact, references to random memory addresses can't be created (*)
-* Use of `Option` type is very cheap and used in virtually all APIs where absence of value is possible
-
 ???
-Unless you use unsafe stuff in Rust
+Unless a construct like RwLock or Cow is used
 
 ---
 
 # Safe Numeric Processing
 
-* Rust does not coerce `Ints` to `Longs` and so forth automatically
-* Explicit signed and unsigned types, operators like `>>` appropriate to sign-ness
-  * Scala: you have to pick right operator (`>>` vs `>>>`) depending on if you want signed or unsigned shift.
+* Rust does not coerce `Ints` to `Longs` automatically
+* Explicit signed and unsigned types
+  * Scala: you have to pick shift operator (`>>` vs `>>>`) depending on signedness
   * Opt-in correctness  :(
   * Rust: `u16 >>` is unsigned shift, `i16 >>` is a signed shift.  Type and compiler enforced!
 * Different methods for handling overflows
@@ -388,6 +378,8 @@ Unless you use unsafe stuff in Rust
   * `overflowing_add`
   * `saturating_add`
 * 128-bit primitive type is kinda cool
+
+Some of this is of course possible in Scala too, via Spire for example.
 
 ---
 
@@ -399,10 +391,6 @@ class: center, middle
 
 # Structs and Performance
 
-Really big deal for data processing and databases.
-
-Example1: Scala object graph, from FiloDB, bunch of case classes
-
 ```scala
 final case class ChunkQueryInfo(info: ChunkSetInfo,
                                 tsReader: LongDataReader, valueReader: VectorDataReader)
@@ -411,13 +399,24 @@ final case class ChunkSetInfo(id: Long, startTime: Long, endTime: Long,
 val chunksToQuery: Seq[ChunkQueryInfo]
 ```
 
-Memory Usage:
-* `ChunkQueryInfo` - 8/16 byte header + 3 references
-* LondDataReader and VectorDataReaders - 8/16 byte headers + fields
-* `ChunkSetInfo` - 8/16 byte header + 28 bytes fields + reference
-* `Seq[ChunkPointer]` - 8/16 bytes each for Seq + Array headers, + `java.lang.Long` for each element (boxing)
+16 byte header per object:
 
-For chunks length of 2, each `ChunkQueryInfo` has an object overhead of up to 128 bytes, around same size as size of fields themselves!
+<div class="mermaid">
+  graph LR;
+  CQI(16B:ChunkQueryInfo) --> CSI(16B:ChunkSetInfo)
+  CQI --> VDR(16B:VectorDataReader)
+  CSI --> Seq(16B:Seq of ChunkPointer)
+  Seq --> Item1[java.lang.Long]
+  Seq --> Item2[java.lang.Long]
+</div>
+
+For chunks length of 2, each `ChunkQueryInfo` has ~128 bytes overhead
+
+???
+Example1: Scala object graph, from FiloDB, bunch of case classes
+Really big deal for data processing and databases.
+Overhead maybe as big as data fields themselves
+
 
 ---
 
@@ -438,15 +437,13 @@ struct ChunkSetInfo {
 }
 ```
 
-* Inlined structs allow Rust to save memory:
-  * No object overhead, Vec has struct of 24 bytes (x86_64) vs 8 for a reference
-  * 112 byte advantage per `ChunkQueryInfo`
-* Rust performance advantage: returning structs on stack vs object allocation
-  * Performance + safety: fearlessly use Option everywhere
-* In Scala, we ended up moving above graph to offheap, which made debugging and readability much much harder
+* Structs are inlined - no object header overhead
+* 112 bytes saved per `ChunkQueryInfo`
+* Returning structs on stack super cheap + fast
 
 ???
 I've found myself, SO many times, choosing a hack in FiloDB just to avoid object allocations on returns.  This is a serious JVM deficiency for high-performance code.
+* In Scala, we ended up moving above graph to offheap, which made debugging and readability much much harder
 
 ---
 
@@ -461,48 +458,19 @@ object CountEvens {
 
 --
 
-```
-public int apply(scala.collection.Seq<java.lang.Object>);
-    descriptor: (Lscala/collection/Seq;)I
-    flags: ACC_PUBLIC
-    Code:
-      stack=3, locals=2, args_size=2
-         0: aload_1
-         1: new           #16                 // class CountEvens$$anonfun$apply$1
-         4: dup
-         5: invokespecial #17                 // Method CountEvens$$anonfun$apply$1."<init>":()V
-         8: invokeinterface #23,  2           // InterfaceMethod scala/collection/Seq.filter:(Lscala/Function1;)Ljava/lang/Object;
-```
-
-* Object allocation: the inner closure is a Function1, must be initialized
-
----
-
-# Scala: Functional Transform Example (II)
-
-```
- public final java.lang.Object apply(java.lang.Object);
-    descriptor: (Ljava/lang/Object;)Ljava/lang/Object;
-    flags: ACC_PUBLIC, ACC_FINAL, ACC_BRIDGE, ACC_SYNTHETIC
-    Code:
-      stack=2, locals=2, args_size=2
-         0: aload_0
-         1: aload_1
-         2: invokestatic  #31                 // Method scala/runtime/BoxesRunTime.unboxToInt:(Ljava/lang/Object;)I
-         5: invokevirtual #33                 // Method apply:(I)Z
-         8: invokestatic  #37                 // Method scala/runtime/BoxesRunTime.boxToBoolean:(Z)Ljava/lang/Boolean;
-        11: areturn
-```
-
-* Scala closures are boxed.  Thus, each Int needs to be boxed, passed to the apply() method of the closure as `java.lang.Object`, then unboxed
-* The boolean result of the `filter` method needs to be boxed to `java.lang.Boolean`
-* Due to the virtual interface method, and the many implementations of function1, the JVM probably cannot inline this method
+* Allocate `scala.Function1` for inner closure
+* For each number:
+  * Box number into `java.lang.Integer`
+  * Pass object into closure `apply` method:
+    * Unbox the integer
+    * Calculate `n % 2 == 0`
+    * Box result into `java.lang.Boolean`
+  * Keep only numbers where above condition true
+* Count total elements
 
 ---
 
 # Rust: Performance AND Abstractions
-
-Rust OTOH is able to fully optimize nice functional transforms with inlining and no boxing.
 
 ```rust
 pub fn count_evens(nums: Vec<i32>) -> usize {
@@ -510,36 +478,27 @@ pub fn count_evens(nums: Vec<i32>) -> usize {
 }
 ```
 
-The transform above is compiled into a very tight register-only loop: 100% inlined, no allocations, no method calls
+Rust is able to fully optimize nice functional transforms with inlining and no boxing.
 
-```
-     mov     rdi, qword, ptr, [rdi]
-     mov     rcx, qword, ptr, [rax, +, 16]
-     test    rcx, rcx
-     je      LBB37_1
-     lea     rdx, [4*rcx, -, 4]
-     shr     rdx, 2
-     inc     rdx
-     cmp     rdx, 4
-     jae     LBB37_4
-     xor     ebx, ebx
-     mov     rdx, rdi
-     jmp     LBB37_12
-LBB37_1:
-```
+* For each number:
+    * Calculate `n % 2 == 0`
+  * Keep only numbers where above condition true
+* Count total elements
 
 ---
 
 # Use case: Rust in Data Processing
 
-* Safe low-level manipulation (structs, exact layout, memory safety)
+* Safe data manipulation
 * C-like performance with no-cost abstractions
-* Safety: no numeric coercion; control over boundary conditions
 * Exact control of memory allocation for large datasets
 * Use high-level constructs without GC pauses
 * Easy SIMD, GPU access, easy integration with native libraries
   * Tensorflow, BLAS, RocksDB, etc. etc.
 * Super fast UTF8 processing performance for NLP, regex etc.
+
+???
+structs with layout control, precise numeric handling, good bit twiddling
 
 ---
 
@@ -570,9 +529,9 @@ LBB37_1:
   ### Rust
   * Built-in async/await, Future
   * Built-in primitives (thread, mutex, RwLock, Arc, ...)
-  * Safety enforced through lifetimes and traits (Send, Sync)
+  * Safety enforced through lifetimes, scoping, ownership, compilation checks
+  *
   * Library-based: Actix (actors), Tokio, etc.
-  * Just getting started
 ]
 
 ---
@@ -580,9 +539,10 @@ LBB37_1:
 # Concurrency: Options
 
 Choose an option to satisfy the compiler:
-* Safe threaded access via locking: `RwLock`, `Mutex`, `Arc`
+* Safe threaded access via primitives: `RwLock`, `Mutex`, `Arc`, `Cow`
 * Use multi-thread safe data structures
 * Use channels to communicate with a single thread
+* async / await
 * Third party libraries:
   * https://tokio.rs
   * https://github.com/actix/actix
@@ -682,17 +642,19 @@ struct S {
 
 * Getting past borrow checker and compiler errors is hard at first.
   * Discord, Rust community everywhere is super helpful
-* Hard to get used to language without REPL
-* Cargo is fairly awesome build tool.  Sorry, way ahead of SBT.
+* Rust doesn't have REPL :(
 * JVM/Scala is probably more productive for many use cases. But where Rust is good, it's really good
 
-* Learning Rust has improved my programming everywhere; especially about what it means to be safe.
+* Cargo is fairly awesome build tool.  Sorry, way ahead of SBT.
+* Learning Rust has improved my programming everywhere
 * Rust works because safety is *universal* and *pervasive*, and the community has made it a priority
   * Partial safety is not real safety
   * Rust forces safety to be IN YOUR FACE ALL THE TIME.
-* Being welcoming and inclusive has to be a foundational value of a community, hard to add it after the fact
+
 
 ???
+ especially about what it means to be safe.
+* Being welcoming and inclusive has to be a foundational value of a community, hard to add it after the fact
 In your face  - maybe that's the way it should be
 
 ---
@@ -751,11 +713,28 @@ For offheap data management: explicit Ptr type >> using Longs or type aliases; s
 
 ---
 
+# Interesting Rust Crates/Frameworks
+
+* https://www.arewewebyet.org
+* http://crates.io
+* Web Frameworks - Actix, Rocket, Gotham, Iron, Nickel
+* Networking/HTTP - H2, Hyper, Tokio
+* Fast text processing - nom, pest, regex
+
+IDE Support - IntelliJ-Rust, VSCode, Sublime/Emacs/VIM/Atom + Racer
+
+BTW....
+
+* Swift on Linux is also a thing...  https://swift.org/server/
+
+---
+
 # Thank You Very Much
 
 More links:
 
 * https://github.com/velvia/links/blob/master/rust.md
+* https://brson.github.io/fireflowers/
 
 ---
 
@@ -765,7 +744,9 @@ class: center, middle
 
 ---
 
-# Look, you can still do FP
+class: center, middle
+
+Conor McBride: "sometimes it's easier to search for good programs in the space of well typed programs rather than in the space of ASCII turds"
 
 ---
 
@@ -797,6 +778,46 @@ impl HttpResponse<Headers> {
     }
 }
 ```
+
+---
+
+```
+public int apply(scala.collection.Seq<java.lang.Object>);
+    descriptor: (Lscala/collection/Seq;)I
+    flags: ACC_PUBLIC
+    Code:
+      stack=3, locals=2, args_size=2
+         0: aload_1
+         1: new           #16                 // class CountEvens$$anonfun$apply$1
+         4: dup
+         5: invokespecial #17                 // Method CountEvens$$anonfun$apply$1."<init>":()V
+         8: invokeinterface #23,  2           // InterfaceMethod scala/collection/Seq.filter:(Lscala/Function1;)Ljava/lang/Object;
+```
+
+* Object allocation: the inner closure is a Function1, must be initialized
+
+---
+
+# Scala: Functional Transform Example (II)
+
+```
+ public final java.lang.Object apply(java.lang.Object);
+    descriptor: (Ljava/lang/Object;)Ljava/lang/Object;
+    flags: ACC_PUBLIC, ACC_FINAL, ACC_BRIDGE, ACC_SYNTHETIC
+    Code:
+      stack=2, locals=2, args_size=2
+         0: aload_0
+         1: aload_1
+         2: invokestatic  #31                 // Method scala/runtime/BoxesRunTime.unboxToInt:(Ljava/lang/Object;)I
+         5: invokevirtual #33                 // Method apply:(I)Z
+         8: invokestatic  #37                 // Method scala/runtime/BoxesRunTime.boxToBoolean:(Z)Ljava/lang/Boolean;
+        11: areturn
+```
+
+* Scala closures are boxed.  Thus, each Int needs to be boxed, passed to the apply() method of the closure as `java.lang.Object`, then unboxed
+* The boolean result of the `filter` method needs to be boxed to `java.lang.Boolean`
+* Due to the virtual interface method, and the many implementations of function1, the JVM probably cannot inline this method
+
 
     </textarea>
     <script src="https://remarkjs.com/downloads/remark-latest.min.js">
