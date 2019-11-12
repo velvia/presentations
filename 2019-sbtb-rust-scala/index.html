@@ -53,6 +53,8 @@ class: center, middle
 * [@evanfchan](https://twitter.com/Evanfchan)
 * [IG: @platypus.arts](http://instagram.com/platypus.arts)
 
+<img src="startrails.png" width="800">
+
 ---
 
 # Goals
@@ -116,7 +118,7 @@ class: center, middle
 
 ---
 
-# Scala Memory Model
+# JVM Memory Model
 
 .left-column[
   ### Stack
@@ -130,7 +132,7 @@ class: center, middle
 
 ---
 
-# Scala Memory Model - GC
+# JVM Memory Model - GC
 
 <div class="mermaid">
   graph LR
@@ -366,6 +368,84 @@ Unless a construct like RwLock or Cow is used
 
 ---
 
+# Async/Await - Safe Sharing
+
+Using async/await, Rust can prove safe async borrowing
+
+```rust
+use futures::executor::block_on;
+
+// Compiles to an asynchronous future
+async fn map_insert(map: &mut HashMap<&str, &str>) {
+    map.insert("key1", "val1");
+}
+
+pub fn async_map_update() {
+    let mut map = HashMap::new();
+    map.insert("key1", "value1");
+    // Diff thread can async borrow reference as lifetime can be verified
+    block_on(map_insert(&mut map));
+}
+```
+
+---
+
+# Aside: Asynchronous stack traces in Rust
+
+```rust
+thread 'async-task-driver' panicked at 'nested async panic!', src/main.rs:42:5
+stack backtrace:
+...
+   8: async_stack_traces::blow_up::{{closure}}
+             at src/main.rs:42
+...
+  15: async_stack_traces::bar::{{closure}}
+             at src/main.rs:37
+...
+  22: async_stack_traces::foo::{{closure}}
+             at src/main.rs:32
+...
+```
+
+---
+
+# Actix - Actors for Rust
+
+```rust
+// this is our Message
+struct Sum(usize, usize);
+
+// we have to define the response type for `Sum` message
+impl Message for Sum {
+    type Result = usize;
+}
+
+// Actor definition
+struct Summator;
+
+impl Actor for Summator {
+    type Context = Context<Self>;
+}
+
+// now we need to define `MessageHandler` for the `Sum` message.
+impl Handler<Sum> for Summator {
+    type Result = usize;   // <- Message response type
+
+    fn handle(&mut self, msg: Sum, ctx: &mut Context<Self>) -> Self::Result {
+        msg.0 + msg.1
+    }
+}
+```
+
+???
+Actix is an actor framework for Rust.
+Notice how there are no classes in Rust, but what you do is implement different traits.
+Here there are three diff traits for actors - Message Actor and Handler.
+Also notice the `&mut self`.  Every method declares if it needs mutable or immutable version of self.
+This is why there are mutability checks everywhere.
+
+---
+
 # Safe Numeric Processing
 
 * Rust does not coerce `Ints` to `Longs` automatically
@@ -516,101 +596,6 @@ structs with layout control, precise numeric handling, good bit twiddling
 
 ---
 
-# Concurrency
-
-.left-column[
-  ### Scala
-  * Library-based, built on JVM threads
-  * Futures (built-in)
-  * Huge ecosystem: Akka, Monix, etc. etc.
-  * Safety is opt-in
-]
-.right-column[
-  ### Rust
-  * Built-in async/await, Future
-  * Built-in primitives (thread, mutex, RwLock, Arc, ...)
-  * Safety enforced through lifetimes, scoping, ownership, compilation checks
-  *
-  * Library-based: Actix (actors), Tokio, etc.
-]
-
----
-
-# Concurrency: Options
-
-Choose an option to satisfy the compiler:
-* Safe threaded access via primitives: `RwLock`, `Mutex`, `Arc`, `Cow`
-* Use multi-thread safe data structures
-* Use channels to communicate with a single thread
-* async / await
-* Third party libraries:
-  * https://tokio.rs
-  * https://github.com/actix/actix
-
-Theme: rustc prevents mistakes, and forces you to pick explicit options.  Also provides non-thread-safe options that are higher-performance, and prevents sharing of those across threads.
-
----
-
-# Async-Await example
-
-Async code that looks like synchronous code:
-(This used to be called CSP in Scala)
-
-```rust
-async fn handle_get_counters(
-    &self,
-    p: &mut P::Deserializer,
-) -> Result<ProtocolEncodedFinal<P>, Error> {
-    let args = {/* snip: some code using `?` */};
-    let res = self.service.get_counters(args).await?;
-    let enc = write_message(p, "getCounters", MessageType::Reply, |p| res.write(p))?;
-    Ok(enc)
-}
-```
-
-The `await` after get_counters causes that thread to be suspended, other tasks can then be multiplexed.
-
-(from https://docs.rs/dtolnay/0.0.3/dtolnay/macro._01__await_a_minute.html)
-
----
-
-# Aside: Asynchronous stack traces in Rust
-
-```rust
-thread 'async-task-driver' panicked at 'nested async panic!', src/main.rs:42:5
-stack backtrace:
-...
-   8: async_stack_traces::blow_up::{{closure}}
-             at src/main.rs:42
-...
-  15: async_stack_traces::bar::{{closure}}
-             at src/main.rs:37
-...
-  22: async_stack_traces::foo::{{closure}}
-             at src/main.rs:32
-...
-```
-
----
-
-# Rust - a Data-Oriented Language
-
-.left-column[
-  ### Scala/Java
-  * Classes and objects
-  * Inheritance
-  * Traits as .class files
-]
-.right-column[
-  ### Rust
-  * Structs with methods
-  * Composition
-  * No inheritance
-  * Prefer static dispatch when possible
-]
-
----
-
 # Macros
 
 * Standard language feature
@@ -744,12 +729,6 @@ class: center, middle
 
 ---
 
-class: center, middle
-
-Conor McBride: "sometimes it's easier to search for good programs in the space of well typed programs rather than in the space of ASCII turds"
-
----
-
 # Other neat type-level stuff
 
 Typestate pattern in Rust: http://cliffle.com/blog/rust-typestate/
@@ -778,6 +757,29 @@ impl HttpResponse<Headers> {
     }
 }
 ```
+
+---
+
+# Async-Await example
+
+Async code that looks like synchronous code:
+(This used to be called CSP in Scala)
+
+```rust
+async fn handle_get_counters(
+    &self,
+    p: &mut P::Deserializer,
+) -> Result<ProtocolEncodedFinal<P>, Error> {
+    let args = {/* snip: some code using `?` */};
+    let res = self.service.get_counters(args).await?;
+    let enc = write_message(p, "getCounters", MessageType::Reply, |p| res.write(p))?;
+    Ok(enc)
+}
+```
+
+The `await` after get_counters causes that thread to be suspended, other tasks can then be multiplexed.
+
+(from https://docs.rs/dtolnay/0.0.3/dtolnay/macro._01__await_a_minute.html)
 
 ---
 
