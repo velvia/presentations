@@ -8,7 +8,10 @@
       @import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
       @import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
 
-      body { font-family: 'Droid Serif'; }
+      body {
+        font-family: 'Droid Serif';
+        font-size: 24px;
+      }
       h1, h2, h3 {
         font-family: 'Yanone Kaffeesatz';
         font-weight: normal;
@@ -43,6 +46,8 @@ class: center, middle
 ## Scale by the Bay - Nov 2019
 
 .red[Evan Chan]
+
+http://velvia.github.io/presentations/2019-sbtb-rust-scala
 
 ---
 
@@ -622,6 +627,8 @@ In your face  - maybe that's the way it should be
 * [j4rs](https://astonbitecode.github.io/blog/post/j4rs_0.6.0/) for calling Java from Rust
 * [JavaCPP](https://github.com/bytedeco/javacpp)
 
+* [GraalVM](http://graalvm.org) - Super promising direct integration of LLVM bitcode and JVM
+
 Example:
 * Use Scala/JVM for Zookeeper, distributed coordination, integration layers
 * Use Rust for high-performance, memory-heavy portion
@@ -772,5 +779,6 @@ impl HttpResponse<Headers> {
     <script>
       var slideshow = remark.create();
     </script>
+    <script src="../remark-zoom.js" type="text/javascript"></script>
   </body>
 </html>
