@@ -57,19 +57,12 @@ class: center, middle
 
 ---
 
-# Goals
-
-* Compare Rust and Scala in terms of safety and performance + abstractions
-* Lessons learned
-* Integration of Rust and Scala
-
----
-
 # How I Got Into Rust
 
 * FiloDB - in memory TSDB
   * 100 billion compressed data points on single node
-  * Almost 100% Scala
+  * Up to 1 million samples / second, per node
+  * 100% Scala
 * Storing data on heap was not feasible
   * Object graphs had >50% overhead
   * nasty and unpredictable GC issues
@@ -79,12 +72,14 @@ Thought I'd talk about something a bit more universal than in memory DBs..
 
 --
 
+* Moved most objects off-heap
 * .red[*but managing offheap memory manually is hard!*]
 * Byte-level high performance data manipulation is nasty in JVM and very error prone
 
 ???
 I have a confession to make.  The last three years, I stood on stage proclaiming how great
 of a TSDB we wrote, and how awesome we are able to squeeze awesome performance with offheap memory.  And they were great innovations - but they led to some really nasty long term code debt and problems.
+And if you look at other JVM projects like Spark, HBase, Cassandra, etc. they all have hit similar bumps and gone in similar direction - more offheap, less JVM objects.
 
 ---
 
@@ -569,57 +564,17 @@ Rust is able to fully optimize nice functional transforms with inlining and no b
 
 # Use case: Rust in Data Processing
 
-* Safe data manipulation
-* C-like performance with no-cost abstractions
-* Exact control of memory allocation for large datasets
-* Use high-level constructs without GC pauses
-* Easy SIMD, GPU access, easy integration with native libraries
-  * Tensorflow, BLAS, RocksDB, etc. etc.
-* Super fast UTF8 processing performance for NLP, regex etc.
-
-???
-structs with layout control, precise numeric handling, good bit twiddling
-
----
-
-# Rust Data Processing Apps
+Safe + fast as C + abstractions + easy SIMD => WIN!
 
 * [Timely Dataflow](https://github.com/TimelyDataflow/timely-dataflow) - distributed data-parallel compute engine
 * [DataFusion](https://arrow.apache.org/blog/2019/02/04/datafusion-donation/) - Apache Arrow's query engine
-* [Weld](https://github.com/weld-project/weld) - Stanford's hi-perf runtime for analytics
+* [Weld](https://github.com/weld-project/weld) - Stanford's hi-perf IR for analytics
 
 * [MinSQL](https://github.com/minio/minsql/blob/master/README.md)
 * [Sled](https://github.com/spacejam/sled) - lock-free database engine
 * [Ripgrep](https://github.com/BurntSushi/ripgrep) - insanely fast grep utility
 
 * [Are we learning yet?](http://www.arewelearningyet.com) - list of ML Rust crates
-
----
-
-# Macros
-
-* Standard language feature
-* Used everywhere: `println!`, `vec!`, `dbg!`, etc. etc.
-* AST-based, similar to Scala macros
-
-New syntax (-ish):
-```rust
-let map = hashmap!{
-    "a" => 1,
-    "b" => 2,
-};
-```
-
-Automatic method/trait derivation:
-```rust
-#[derive(Serialize, Deserialize)]
-struct S {
-    #[serde(rename = "a")]
-    f: i32,
-}
-```
-
-(Examples from https://words.steveklabnik.com/an-overview-of-macros-in-rust)
 
 ---
 
@@ -729,6 +684,33 @@ class: center, middle
 
 ---
 
+# Macros
+
+* Standard language feature
+* Used everywhere: `println!`, `vec!`, `dbg!`, etc. etc.
+* AST-based, similar to Scala macros
+
+New syntax (-ish):
+```rust
+let map = hashmap!{
+    "a" => 1,
+    "b" => 2,
+};
+```
+
+Automatic method/trait derivation:
+```rust
+#[derive(Serialize, Deserialize)]
+struct S {
+    #[serde(rename = "a")]
+    f: i32,
+}
+```
+
+(Examples from https://words.steveklabnik.com/an-overview-of-macros-in-rust)
+
+---
+
 # Other neat type-level stuff
 
 Typestate pattern in Rust: http://cliffle.com/blog/rust-typestate/
@@ -757,46 +739,6 @@ impl HttpResponse<Headers> {
     }
 }
 ```
-
----
-
-# Async-Await example
-
-Async code that looks like synchronous code:
-(This used to be called CSP in Scala)
-
-```rust
-async fn handle_get_counters(
-    &self,
-    p: &mut P::Deserializer,
-) -> Result<ProtocolEncodedFinal<P>, Error> {
-    let args = {/* snip: some code using `?` */};
-    let res = self.service.get_counters(args).await?;
-    let enc = write_message(p, "getCounters", MessageType::Reply, |p| res.write(p))?;
-    Ok(enc)
-}
-```
-
-The `await` after get_counters causes that thread to be suspended, other tasks can then be multiplexed.
-
-(from https://docs.rs/dtolnay/0.0.3/dtolnay/macro._01__await_a_minute.html)
-
----
-
-```
-public int apply(scala.collection.Seq<java.lang.Object>);
-    descriptor: (Lscala/collection/Seq;)I
-    flags: ACC_PUBLIC
-    Code:
-      stack=3, locals=2, args_size=2
-         0: aload_1
-         1: new           #16                 // class CountEvens$$anonfun$apply$1
-         4: dup
-         5: invokespecial #17                 // Method CountEvens$$anonfun$apply$1."<init>":()V
-         8: invokeinterface #23,  2           // InterfaceMethod scala/collection/Seq.filter:(Lscala/Function1;)Ljava/lang/Object;
-```
-
-* Object allocation: the inner closure is a Function1, must be initialized
 
 ---
 
