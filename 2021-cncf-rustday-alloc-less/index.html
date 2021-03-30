@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>2021 CNCF RustDay Europe</title>
+    <meta charset="utf-8">
+    <style>
+      @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+      @import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
+      @import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+
+      body {
+        font-family: 'Droid Serif';
+        font-size: 24px;
+      }
+      h1, h2, h3 {
+        font-family: 'Yanone Kaffeesatz';
+        font-weight: normal;
+      }
+      .remark-code, .remark-inline-code { font-family: 'Ubuntu Mono'; }
+
+     /* Two-column layout */
+      .left-column {
+        /*color: #777;*/
+        width: 44%;
+        /*height: 92%;*/
+        float: left;
+      }
+/*        .left-column h2:last-of-type, .left-column h3:last-child {
+          color: #000;
+        }
+*/
+      .right-column {
+        width: 44%;
+        float: right;
+        /*padding-top: 1em;*/
+      }
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+class: center, middle
+
+# Allocating Less: Really Thin Rust Cloud Apps
+
+## 2021 CNCF RustDay Europe
+
+.red[Evan Chan]
+
+.red[Senior Data Engineer - [UrbanLogiq](https://urbanlogiq.com)]
+
+http://velvia.github.io/presentations/2021-cncf-rustday-alloc-less
+
+---
+
+# Blurb about UrbanLogiq
+
+---
+
+# Why Thin Cloud Apps?
+
+<div class="mermaid">
+  graph LR;
+  VMs --> Containers
+  Containers --> Serverless
+  Containers --> WebAssembly
+</div>
+
+* Cloud and infrastructure is getting smaller, thinner, and more concurrent
+* Allocations are slow!
+* We live in a data-rich world
+* Using less memory = more eco friendly!
+
+---
+
+# Why Rust for Thin Cloud Apps?
+
+* No compromise - performance, safety, AND abstractions
+* No GC - precise control over memory
+* Huge amount of control over memory usage, layout
+  * Can avoid allocations in so many clever ways
+  * Skipping allocations also == better performance!
+* Can opt out of standard library
+* Can write kernel level code, OSes, hypervisors, infrastructure
+* Secure
+* Provably correct concurrency
+
+---
+
+# How I Got Into Rust
+
+* FiloDB - in memory TSDB (github.com/filodb/FiloDB)
+  * 100 billion compressed data points on single node
+  * Super high performance
+  * 100% Scala
+  * Huge GC pauses due to keeping 100GB's of data on heap
+  * Very custom, nasty code to get around JVM memory model, not maintainable
+
+* 2018 [SBTB: Brian Cantrill](https://www.youtube.com/watch?v=2wZ1pCpJUIM)
+  * "You should write it in Rust!"
+  * Rust: "Pick 3 - performance, safety, and high-level abstractions"
+    * Better abstractions and safety, much better performance
+  * Fell in love with combo of perf, safety, and ability to control everything
+  * SIMD and ability to maximize hardware very appealing
+
+???
+Manual offheap memory management, custom byte twiddling, super nasty and error prone
+
+---
+
+class: center, middle
+
+# How Rust Apps Use Memory
+
+---
+
+# Rust Memory Model
+
+.left-column[
+  ### Stack
+  * Primitives
+  * Structs (fixed size)
+  * Fixed size arrays
+  * Pointers/references
+]
+.right-column[
+  ### Heap
+  * Vecs (lists, arrays)
+  * Strings
+  * Dynamic-sized objects
+
+  Rust has no GC - how does it manage heap memory?
+]
+
+???
+This is a really important point for those of you coming from GC languages - JVM, Python, Go, etc.
+Rust has no garbage collector!!!  It "knows" when you're done using stuff.  Tradeoff is you have
+to understand ownership to make the compiler happy.
+
+---
+
+# Rust Memory Model: Safety
+
+Simple principle:
+
+### Allow mutation only if someone has *unique* access to data.
+
+If your Rust program compiles, then it is free of memory corruption bugs and data races. Period.
+
+---
+
+# Details - Vec, String
+
+<img src="vec-mem-layout.png" height="200">
+
+<img src="String-mem-layout.png" height="200">
+
+24 bytes on x86/64-bit CPUs (+ n * sizeof(T))
+
+---
+
+# Details - `&str`, `&[...]`, etc.
+
+<img src="slice-ref-mem-layout.png" height="200">
+
+<img src="str-ref-mem-layout.png" height="200">
+
+---
+
+# What about HashMaps?
+
+<img src="iu.jpeg" />
+
+* Example: `HashMap<String, String>`
+* Each bucket slot needs a `Vec<Bucket>` (24 bytes) + 24 bytes for each of the key and value Strings
+    * Plus memory for the key and value string UTF-8 bytes themselves
+    * Overhead of 72 bytes/entry is >> the size of smaller keys and values!
+* Not just a waste of memory, but allocations are slow too!
+
+---
+
+# Where You're Allocating in your Apps
+
+* Search for every `.clone()`!
+* Watch out for `Vec`s
+* Nested data structures esp Strings
+* `Box<...>`
+* Trait objects (eg `dyn`)
+  * Error types
+* Serialization
+
+---
+
+# Benchmarking Memory Usage
+
+* Dynamic, ongoing memory usage
+  * "What/how am I allocating over time"
+  * [Heaptrack](https://github.com/KDE/heaptrack) (Linux only)
+  * [dhat](https://docs.rs/dhat/0.2.2/dhat/) - swap out your global allocator, track usage
+* Static heap analysis
+  * "Whose using up all my memory/heap right now"
+  * Fairly difficult since Rust does not have a GC
+  * Can get overall memory usage stats with jemalloc-ctl, differential analysis
+    * or [stats-alloc](https://crates.io/crates/stats_alloc)
+  * Can profile data structures with [deepsize](https://crates.io/crates/deepsize)
+
+TODO: run HeapTrack and get a screen snapshot!
+
+---
+
+class: center, middle
+
+# Remember, in Rust, the more you type, the more you allocate!
+
+---
+
+class: center, middle
+
+# Getting to Really Thin Apps
+
+---
+
+# Borrow, don't Move
+
+Do you see function signatures like this?
+
+```rust
+fn process_some_list(list: Vec<String>) -> Foo {}
+```
+
+The caller has to allocate twice here - once for the Vec and once for each String.   Instead, borrow if possible:
+
+```rust
+fn process_some_list(list: &[&str]) -> Foo {}
+```
+
+The above signature gives the caller two chances to avoid allocation.  Or, for even more flexibility,
+pass in an iterator:
+
+```rust
+fn process_some_list(it: I) -> Foo
+where I: IntoIterator<Item = &str> {...}
+```
+
+---
+
+# Flattening Data Structures
+
+Avoid nested dynamically-sized structures like `Vec<String>`, `Vec<Vec<...>>`, etc.  These crates help:
+* [smallvec](https://crates.io/crates/smallvec) - inline/stack small lists
+* [nested](https://crates.io/crates/nested) - Much smaller storage for `Vec<String>` / `Vec<Vec<...>>`
+* [tinyset](https://docs.rs/tinyset/0.4.2/tinyset/) - space efficient sets and maps
+* [String](https://docs.rs/string/0.2.1/string/) - configurable storage, incld stack byte arrays!
+* [Inlinable String](http://fitzgen.github.io/inlinable_string/inlinable_string/index.html) - stores strings up to 30 chars inline, automatic promotion to heap string if needed.
+* Also see [smallstr](https://docs.rs/smallstr/0.2.0/smallstr/)
+* [kstring](https://docs.rs/kstring/0.1.0/kstring/) - intended for map keys: immutable, inlined for small keys, and have Ref/Cow types to allow efficient sharing.  :)
+
+Test using 50,000 small strings:
+(https://github.com/velvia/rust-alloc-test)
+
+|  Storage type   | jemalloc bytes used     |
+| --------------- | ----------------------- |
+| `Vec<String>`   | 2.34 MiB                |
+| `Nested<String>` | 1.83 MiB.              |
+
+---
+
+# The Effect of Using Nested/SmallVec
+
+---
+
+# JeMalloc and MiMalloc
+
+What to expect with different memory allocators
+* JeMalloc: used at Facebook, uses a bit more memory to optimize frequent allocations
+  * Example of 50k small string allocations: Overhead is about 11%
+  * Using deepsize to compare actual usage vs jemalloc-ctl (See https://github.com/velvia/rust-alloc-test)
+
+MiMalloc: from Microsoft
+* In my experience, pretty fast but has more compatibility issues/panics with some crates (notably, Arrow)
+
+---
+
+# A JSON Processing Example
+
+---
+
+# Reducing clone with Async
+
+* You might find yourself cloning lots of things for async closures/functions and Futures
+* Consider using `Arc<..>` instead of clone(), much cheaper memory wise
+* Consider using Actors.  Keep state local instead of passing it around -> less need to clone/use Arc
+* Cow?
+
+---
+
+# How slow is Arc, really?
+
+---
+
+# Bump, Arena Allocators
+
+---
+
+# Avoiding Trait Objects with Enums
+
+---
+
+# (No)Serialization
+
+---
+
+# no_std
+
+---
+
+# Structs and Performance
+
+```scala
+final case class ChunkQueryInfo(info: ChunkSetInfo,
+                                tsReader: LongDataReader, valueReader: VectorDataReader)
+final case class ChunkSetInfo(id: Long, startTime: Long, endTime: Long,
+                              numRows: Int, chunks: Seq[ChunkPointer])
+val chunksToQuery: Seq[ChunkQueryInfo]
+```
+
+16 byte header per object:
+
+<div class="mermaid">
+  graph LR;
+  CQI(16B:ChunkQueryInfo) --> CSI(16B:ChunkSetInfo)
+  CQI --> VDR(16B:VectorDataReader)
+  CSI --> Seq(16B:Seq of ChunkPointer)
+  Seq --> Item1[java.lang.Long]
+  Seq --> Item2[java.lang.Long]
+</div>
+
+For chunks length of 2, each `ChunkQueryInfo` has ~128 bytes overhead
+
+???
+Example1: Scala object graph, from FiloDB, bunch of case classes
+Really big deal for data processing and databases.
+Overhead maybe as big as data fields themselves
+
+---
+
+# Thank You Very Much!
+
+* https://velvia.github.io/about
+* https://github.com/velvia
+* [@evanfchan](https://twitter.com/Evanfchan)
+* [IG: @platypus.arts](http://instagram.com/platypus.arts)
+
+<img src="startrails.png" width="800">
+
+
+    </textarea>
+    <script src="https://remarkjs.com/downloads/remark-latest.min.js">
+    </script>
+    <script src="../mermaid.min.js"></script>
+    <link rel="stylesheet" href="../mermaid.css">
+    <script>mermaid.initialize({startOnLoad:true});</script>
+    <script>
+      var slideshow = remark.create();
+    </script>
+    <script src="../remark-zoom.js" type="text/javascript"></script>
+  </body>
+</html>
