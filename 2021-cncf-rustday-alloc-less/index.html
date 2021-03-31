@@ -128,6 +128,8 @@ class: center, middle
   * Vecs (lists, arrays)
   * Strings
   * Dynamic-sized objects
+    * Box
+    * trait objects
 
   Rust has no GC - how does it manage heap memory?
 ]
@@ -216,7 +218,7 @@ class: center, middle
 
 class: center, middle
 
-# Getting to Really Thin Apps
+# Thin Apps - Minimizing Allocations
 
 ---
 
@@ -265,48 +267,166 @@ Test using 50,000 small strings:
 
 ---
 
-# The Effect of Using Nested/SmallVec
-
----
-
-# JeMalloc and MiMalloc
-
-What to expect with different memory allocators
-* JeMalloc: used at Facebook, uses a bit more memory to optimize frequent allocations
-  * Example of 50k small string allocations: Overhead is about 11%
-  * Using deepsize to compare actual usage vs jemalloc-ctl (See https://github.com/velvia/rust-alloc-test)
-
-MiMalloc: from Microsoft
-* In my experience, pretty fast but has more compatibility issues/panics with some crates (notably, Arrow)
-
----
-
-# A JSON Processing Example
-
----
-
 # Reducing clone with Async
 
 * You might find yourself cloning lots of things for async closures/functions and Futures
-* Consider using `Arc<..>` instead of clone(), much cheaper memory wise
-* Consider using Actors.  Keep state local instead of passing it around -> less need to clone/use Arc
-* Cow?
+* Consider using `Arc<..>` instead of clone(), esp for lists, large, immutable things
+* Consider using Actors.
+  * Keep state local, pass small messages/events only
+  * Or, encapsulate frequently-shared state inside structs
+  * Other benefits - less contention, easily scalable/distributable systems
+* [Cow](https://doc.rust-lang.org/std/borrow/enum.Cow.html)?
+  * [Efficiently Escaping Strings using Cow](https://fullstackmilk.dev/efficiently_escaping_strings_using_cow_in_rust/)
+  * Avoid cloning strings if you don't need to modify them a lot!
+
+<img src="cow.jpg" alt="Cow by Alan Hopps" width="40%" style="float:right"/>
+
+???
+For example, Arrow Rust wraps many of its data structures inside Arc<>
 
 ---
 
 # How slow is Arc, really?
 
----
+* `Arc<>.get()` is basically a compare-and-exchange (CAS) on get
+* Estimates for CAS/increment on x86 vary between 30ns - 120ns
+  * depending on which level of cache or main memory your struct lies
 
-# Bump, Arena Allocators
+Rumor: Apple M1 silicon:  CAS is ~6ns
 
 ---
 
 # Avoiding Trait Objects with Enums
 
+If all your trait impl's are within your codebase, you can use enums via [enum-dispatch](https://crates.io/crates/enum_dispatch)
+* Avoid Box and allocating for each trait object.  It's just an enum!
+* Static dispatch - up to 10x faster!
+
+Replace this:
+```rust
+fn process(thing: Box<dyn MyBehavior>) {
+  thing.some_method();   // <-- dynamic dispatch, and you have to Box thing
+}
+```
+
+with:
+```rust
+#[enum_dispatch]
+enum MyBehaviorEnum {
+    MyImplementorA,
+    MyImplementorB,
+}
+
+fn process(thing: MyBehaviorEnum) {
+  thing.some_method();   // <-- static dispatch && no heap alloc!!  :)
+}
+```
+
 ---
 
 # (No)Serialization
+
+Serialization could easily be the top memory/allocation hog in a data-driven application.
+Example:
+```rust
+    let p: Person = serde_json::from_str(data)?;
+```
+
+  1. `serde-json` has to deserialize from raw JSON -> intermediate `serde_json::Value` types
+  2. Now one has to translate from `Value` structs to `Person`
+
+--
+
+Better:
+
+[json-rust](https://github.com/maciejhirsz/json-rust) uses a `Short` value type for short strings.
+  * Guess what? Most JSON strings, especially keys, are short
+  * Avoids allocation (see study coming)
+
+Slightly better:  binary protocols (Protobuf, Thrift, etc.)
+
+---
+
+# (No)Serialization II
+
+Best: avoid serialization altogether.  "No-copy" / "No-unpacking" protocols:
+* [Flatbuffers](https://google.github.io/flatbuffers/)
+* [Cap'n Proto](https://capnproto.org) - from the creator of Protocol Buffers
+* [Apache Arrow](https://docs.rs/arrow/3.0.0/arrow/index.html) (for tabular data)
+* [rkyv](https://crates.io/crates/rkyv) - zero-copy deserialization, no need for generated classes
+
+Or, for simple structs, just use [scroll](https://crates.io/crates/scroll).  I can verify that it compiles
+down to almost machine read/write semantics fast (assuming x86/Little Endian).
+
+
+---
+
+# A JSON Processing Example
+
+Using the [airlines](https://think.cs.vt.edu/corgis/datasets/json/airlines/airlines.json) JSON dataset:
+* MacBook Pro 2020
+* Rust 1.45
+* Standard allocator (wrapped in [dhat](https://docs.rs/dhat/0.2.2/dhat/) for heap profiling)
+* (https://github.com/velvia/rust-alloc-test)
+
+| JSON library  | Runtime   |  Allocations    |
+|---------------|-----------|-----------------|
+| serde-json    | 49.2ms    | 24.9 MiB        |
+
+Analysis from DHAT shows 90% of the 24.9MiB allocated comes from the deserialization of JSON objects (maps).
+
+---
+
+# JSON Processing - serde-json
+
+Output from DHAT:
+
+```
+  ├─▶ PP 1.2/5 (2 children) {
+  │     Total:     22,286,848 bytes (89.46%, 38,692,780.32/s) in 35,264 blocks (18.18%, 61,222.75/s), avg size 632 bytes, avg lifetime 73.51 µs (0.01% of program duration)
+  │     At t-gmax: 5,056 bytes (28.22%) in 8 blocks (12.7%), avg size 632 bytes
+  │     At t-end:  0 bytes (0%) in 0 blocks (0%), avg size 0 bytes
+  │     Allocated at {
+  │       #1: 0x103a595bb: alloc::alloc::exchange_malloc (alloc.rs:268:11)
+  │       #2: 0x103a595bb: alloc::boxed::Box<T>::new (boxed.rs:175:9)
+  │       #3: 0x103a595bb: alloc::collections::btree::node::Root<K,V>::new_leaf (node.rs:157:43)
+  │       #4: 0x103a595bb: core::ops::function::FnOnce::call_once (function.rs:232:5)
+  │       #5: 0x103a595bb: core::option::Option<T>::get_or_insert_with (option.rs:858:26)
+  │       #6: 0x103a595bb: alloc::collections::btree::map::BTreeMap<K,V>::ensure_root_is_owned (map.rs:2282:9)
+  │       #7: 0x103a595bb: alloc::collections::btree::map::BTreeMap<K,V>::entry (map.rs:1059:9)
+  │       #8: 0x103a595bb: alloc::collections::btree::map::BTreeMap<K,V>::insert (map.rs:827:15)
+  │       #9: 0x103a58082: serde_json::map::Map<alloc::string::String,serde_json::value::Value>::insert (map.rs:105:9)
+  │       #10: 0x103a58082: <serde_json::value::de::<impl serde::de::Deserialize for serde_json::value::Value>::deserialize::ValueVisitor as serde::de::Visitor>::visit_map (de.rs:117:25)
+  │       #11: 0x103a56625: <&mut serde_json::de::Deserializer<R> as serde::de::Deserializer>::deserialize_any (de.rs:1345:31)
+  │       #12: 0x103a56625: serde_json::value::de::<impl serde::de::Deserialize for serde_json::value::Value>::deserialize (de.rs:129:9)
+  │     }
+  │   }
+```
+
+---
+
+# JeMalloc and MiMalloc
+
+In general: easy way to improve allocation *performance* though not memory usage.
+
+JeMalloc:
+  * Used to be default for Rust.
+  * Created by Facebook for reducing fragmentation; good concurrency performance
+  * Uses a bit more memory to optimize frequent allocations
+    * Example of 50k small string allocations: Overhead is about 11%
+    * Using deepsize to compare actual usage vs jemalloc-ctl (See https://github.com/velvia/rust-alloc-test)
+
+[MiMalloc](https://docs.rs/mimalloc/0.1.24/mimalloc/): from Microsoft
+* Small, "secure" replacement for Malloc (allocations are encrypted?)
+* Claims to be faster than jemalloc & tcmalloc
+* Supports separate "heaps" that can be cleaned up
+* In my experience, pretty fast but has more compatibility issues/panics with some crates (notably, Arrow)
+
+[tcmalloc](https://crates.io/crates/tcmalloc) from Google
+
+---
+
+# Bump, Arena Allocators
 
 ---
 
