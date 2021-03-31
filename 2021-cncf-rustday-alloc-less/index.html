@@ -85,6 +85,8 @@ http://velvia.github.io/presentations/2021-cncf-rustday-alloc-less
 * Secure
 * Provably correct concurrency
 
+However, you gotta learn how to control and measure allocations!
+
 ---
 
 # How I Got Into Rust
@@ -143,11 +145,10 @@ to understand ownership to make the compiler happy.
 
 # Rust Memory Model: Safety
 
-Simple principle:
-
-### Allow mutation only if someone has *unique* access to data.
-
 If your Rust program compiles, then it is free of memory corruption bugs and data races. Period.
+
+Rust tracks the *lifetimes* of your data.  It uses a set of rules, called "ownership", to determine when
+it's safe to free your allocated data.
 
 ---
 
@@ -202,11 +203,14 @@ If your Rust program compiles, then it is free of memory corruption bugs and dat
 * Static heap analysis
   * "Whose using up all my memory/heap right now"
   * Fairly difficult since Rust does not have a GC
-  * Can get overall memory usage stats with jemalloc-ctl, differential analysis
-    * or [stats-alloc](https://crates.io/crates/stats_alloc)
+  * Can get overall memory usage stats with jemalloc-ctl or [stats-alloc](https://crates.io/crates/stats_alloc)
   * Can profile data structures with [deepsize](https://crates.io/crates/deepsize)
+  * DHAT also gives you analysis of heap usage at max point in time
 
 TODO: run HeapTrack and get a screen snapshot!
+
+???
+Consider sending stats from jemalloc-ctl etc to Prometheus for analysis later
 
 ---
 
@@ -369,11 +373,15 @@ Using the [airlines](https://think.cs.vt.edu/corgis/datasets/json/airlines/airli
 * Standard allocator (wrapped in [dhat](https://docs.rs/dhat/0.2.2/dhat/) for heap profiling)
 * (https://github.com/velvia/rust-alloc-test)
 
-| JSON library  | Runtime   |  Allocations    |
-|---------------|-----------|-----------------|
-| serde-json    | 49.2ms    | 24.9 MiB        |
+| JSON library  | Runtime   |  Allocations | Max heap used (t-gmax) |
+|---------------|-----------|--------------|-------------------|
+| serde-json    | 63-65ms   | 24.9 MiB     | 19,173 bytes |
+| json-rust     | 44-45ms   | 26.8 MiB     | 16,746 bytes |
 
 Analysis from DHAT shows 90% of the 24.9MiB allocated comes from the deserialization of JSON objects (maps).
+
+???
+Json-rust runs faster, and used less heap at max heap time, but total bytes allocated (mostly ephemeral) was higher.
 
 ---
 
@@ -403,6 +411,9 @@ Output from DHAT:
   │   }
 ```
 
+???
+Several things to note: "avg lifetime" how long was the memory allocated, how big was average size
+
 ---
 
 # JeMalloc and MiMalloc
@@ -423,6 +434,19 @@ JeMalloc:
 * In my experience, pretty fast but has more compatibility issues/panics with some crates (notably, Arrow)
 
 [tcmalloc](https://crates.io/crates/tcmalloc) from Google
+
+---
+
+# Comparison using JSON benchmark
+
+| JSON library  | Allocator | Runtime   |
+|---------------|-----------|-----------|
+| serde-json    | Standard  | 49.2ms    |
+| json-rust     | Standard  | 30.2ms    |
+| serde-json    | JeMalloc  | 30-60ms   |
+| json-rust     | JeMalloc  | 34.8ms    |
+
+So, the allocator speeds things up - *sometimes*  :-p
 
 ---
 
