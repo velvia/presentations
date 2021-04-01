@@ -207,8 +207,6 @@ it's safe to free your allocated data.
   * Can profile data structures with [deepsize](https://crates.io/crates/deepsize)
   * DHAT also gives you analysis of heap usage at max point in time
 
-TODO: run HeapTrack and get a screen snapshot!
-
 ???
 Consider sending stats from jemalloc-ctl etc to Prometheus for analysis later
 
@@ -391,7 +389,8 @@ Output from DHAT:
 
 ```
   ├─▶ PP 1.2/5 (2 children) {
-  │     Total:     22,286,848 bytes (89.46%, 38,692,780.32/s) in 35,264 blocks (18.18%, 61,222.75/s), avg size 632 bytes, avg lifetime 73.51 µs (0.01% of program duration)
+  │     Total:     22,286,848 bytes (89.46%, 38,692,780.32/s) in 35,264 blocks (18.18%, 61,222.75/s),
+                      avg size 632 bytes, avg lifetime 73.51 µs (0.01% of program duration)
   │     At t-gmax: 5,056 bytes (28.22%) in 8 blocks (12.7%), avg size 632 bytes
   │     At t-end:  0 bytes (0%) in 0 blocks (0%), avg size 0 bytes
   │     Allocated at {
@@ -452,50 +451,49 @@ So, the allocator speeds things up - *sometimes*  :-p
 
 # Bump, Arena Allocators
 
+Worth mentioning for special cases....
+* Super fast - bump ptr within large chunk of memory
+* Usually must free entire "arena" at once
+* Ex: Want to sandbox & limit memory use for diff parts of app
+  - eg namespaces or queries in a database
+* [bumpalo](https://docs.rs/bumpalo/3.2.1/bumpalo/collections/index.html) - has custom Vec/Map types
+* [generational-arena](https://crates.io/crates/generational-arena) - arena alloc that supports deletion
+
+
 ---
 
-# no_std
+# Minimizing Binary Size
 
----
+Reducing heap usage is not enough?  Try the following tricks for a small binary (< 1MB):
 
-# Structs and Performance
+* [Min-sized-Rust](https://github.com/johnthagen/min-sized-rust)
+  * Strip your binary and set `debug=0`: ~30% reduction
+  * `opt-level = 'z'` (optimize for size not speed)
+  * `lto = true`
+  * Use [Xargo](https://github.com/japaric/xargo) or the nightly [cargo -Z build-std](https://doc.rust-lang.org/cargo/reference/unstable.html#build-std) to optimize std library
 
-```scala
-final case class ChunkQueryInfo(info: ChunkSetInfo,
-                                tsReader: LongDataReader, valueReader: VectorDataReader)
-final case class ChunkSetInfo(id: Long, startTime: Long, endTime: Long,
-                              numRows: Int, chunks: Seq[ChunkPointer])
-val chunksToQuery: Seq[ChunkQueryInfo]
-```
+* For the really adventurous, `#[no_std]` !!
+  * Can get down to C-sized binaries
 
-16 byte header per object:
-
-<div class="mermaid">
-  graph LR;
-  CQI(16B:ChunkQueryInfo) --> CSI(16B:ChunkSetInfo)
-  CQI --> VDR(16B:VectorDataReader)
-  CSI --> Seq(16B:Seq of ChunkPointer)
-  Seq --> Item1[java.lang.Long]
-  Seq --> Item2[java.lang.Long]
-</div>
-
-For chunks length of 2, each `ChunkQueryInfo` has ~128 bytes overhead
+What's taking up space in my binary?  Use [cargo-bloat](https://github.com/RazrFalcon/cargo-bloat).
 
 ???
-Example1: Scala object graph, from FiloDB, bunch of case classes
-Really big deal for data processing and databases.
-Overhead maybe as big as data fields themselves
+Personally not sure if most of these tradeoffs are worth it.  Having a standard library and allocator is
+really nice! And having debug symbols is kinda important.
 
 ---
 
 # Thank You Very Much!
 
+.left-column[
 * https://velvia.github.io/about
 * https://github.com/velvia
 * [@evanfchan](https://twitter.com/Evanfchan)
 * [IG: @platypus.arts](http://instagram.com/platypus.arts)
-
-<img src="startrails.png" width="800">
+]
+.right-column[
+  <img src="rathtrevor_stars.jpeg" alt="Visit http://instagram.com/platypus.arts" width="90%">
+]
 
 
     </textarea>
