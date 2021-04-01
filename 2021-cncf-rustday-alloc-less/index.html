@@ -295,7 +295,7 @@ For example, Arrow Rust wraps many of its data structures inside Arc<>
 
 # How slow is Arc, really?
 
-* `Arc<>.get()` is basically a compare-and-exchange (CAS) on get
+* `Arc<>.get()` is basically atomic increment on clone and atomic dec on drop
 * Estimates for CAS/increment on x86 vary between 30ns - 120ns
   * depending on which level of cache or main memory your struct lies
 
