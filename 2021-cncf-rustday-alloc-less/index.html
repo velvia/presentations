@@ -92,26 +92,8 @@ We use Rust and ML to tackle use cases spanning transportation, economic develop
 
 However, you gotta learn how to control and measure allocations!
 
----
-
-# How I Got Into Rust
-
-* FiloDB - in memory TSDB (github.com/filodb/FiloDB)
-  * 100 billion compressed data points on single node
-  * Super high performance
-  * 100% Scala
-  * Huge GC pauses due to keeping 100GB's of data on heap
-  * Very custom, nasty code to get around JVM memory model, not maintainable
-
-* 2018 [SBTB: Brian Cantrill](https://www.youtube.com/watch?v=2wZ1pCpJUIM)
-  * "You should write it in Rust!"
-  * Rust: "Pick 3 - performance, safety, and high-level abstractions"
-    * Better abstractions and safety, much better performance
-  * Fell in love with combo of perf, safety, and ability to control everything
-  * SIMD and ability to maximize hardware very appealing
-
 ???
-Manual offheap memory management, custom byte twiddling, super nasty and error prone
+I myself came to Rust for many of these reasons, having developed FiloDB, a distributed time-series database, on the JVM, and craving the performance AND safety of Rust.
 
 ---
 
