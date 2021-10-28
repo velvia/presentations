@@ -49,7 +49,7 @@ class: center, middle
 
 .red[Senior Data Engineer - [UrbanLogiq](https://urbanlogiq.com)]
 
-http://velvia.github.io/presentations/xxyy
+http://velvia.github.io/presentations/2021-lbs-data-eng-for-good-pyspark/#1
 
 ---
 
@@ -114,7 +114,7 @@ We use Rust, Python, and ML to tackle use cases spanning transportation, economi
 # Data Engineering Pipeline Goals
 
 * Scalable
-* Repeatable
+* Reproducible
 * Flexible
 * Easy to maintain and understand
 * High productivity
@@ -152,6 +152,7 @@ DAG graph with each node transforming DataFrames
   ### PySpark
   * Integrates with Kedro!
   * Distributed
+  * Still Python, very easy to learn
   * Data does not have to fit in memory
   * High level data ops
   * Lazy
@@ -232,9 +233,27 @@ This seems obvious to anybody with a big data background but it's a big deal for
 
 ---
 
-# Coalescing: How far from my last point?
+# Windowing Functions
 
 To coalesce data from multiple rows, we use windowing functions for adjacency/row state.
+
+Sliding window over data, centered around a current row, with lag (previous) and lead (next) row lookup.
+
+| Lag  | Indx |           deviceID| timestamp|  latitude|   longitude|
+| ---- | --: | ------------------ | -------- | -------- | ---------- |
+| Lag  |  -5 |0000606e153fb72d5...|1562010606|     37.17|   -104.7348|
+| Lag  |  -4 |00043157f6342b342...|1562020544| 37.050922|  -104.78587|
+| Lag  |  -3 |00043157f6342b342...|1562021967|  37.05095|  -104.78588|
+| Lag  |  -2 |00043157f6342b342...|1562021161| 37.050922|  -104.78587|
+| Lag  |  -1 |00043157f6342b342...|1562019848| 37.050922|  -104.78587|
+| **Cur** | **0** |00048d7fb00ee2961...|1561941291|37.2118654|-104.9377987|
+| Lead |   1 |00048d7fb00ee2961...|1561953983|37.2118649|-104.9379102|
+| Lead |   2 |00048d7fb00ee2961...|1561974623|37.2118598|-104.9378926|
+| Lead |   3 |00048d7fb00ee2961...|1561948360|37.2118591|-104.9379316|
+
+---
+
+# Coalescing: How far from my last point?
 
 ```python
 >>> w = Window.partitionBy("deviceID").orderBy("timestamp")
@@ -261,7 +280,9 @@ Compute hypotenuse distance from last row using `lag` function
 
 ---
 
-# Coalescing Events Part I
+# Coalescing: First and Law Row Markers
+
+Identifying groups of events at the "same" location.
 
 ```python
     # True == this is first row of movement.  False == moved < delta from last location
@@ -277,24 +298,23 @@ Compute hypotenuse distance from last row using `lag` function
     df1 = df1.withColumn("last_row", F.lead("first_row", 1, default=True).over(w))
 ```
 
-Results:
 ```
-+--------------------+----------+----------+------------+-----------------+---------+--------+
-|            deviceID| timestamp|  latitude|   longitude|   dist_from_prev|first_row|last_row|
-+--------------------+----------+----------+------------+-----------------+---------+--------+
-|0000606e153fb72d5...|1562010606|     37.17|   -104.7348|             null|     true|    true|
-|00043157f6342b342...|1562019848| 37.050922|  -104.78587|             null|     true|   false|
-|00043157f6342b342...|1562020544| 37.050922|  -104.78587|              0.0|    false|   false|
-|00043157f6342b342...|1562021161| 37.050922|  -104.78587|              0.0|    false|   false|
-|00043157f6342b342...|1562021967|  37.05095|  -104.78588|2.973213749604462|    false|    true|
-|00048d7fb00ee2961...|1561939554|37.2647663|-105.0801919|             null|     true|    true|
-|00048d7fb00ee2961...|1561939974|37.2693613|-105.0483915| 0.03213066238284|     true|    true|
-|00048d7fb00ee2961...|1561940425|37.2520333|-104.9769234| 0.07353875781931|     true|    true|
++------------------+----------+----------+------------+-----------------+---------+--------+
+|          deviceID| timestamp|  latitude|   longitude|   dist_from_prev|first_row|last_row|
++------------------+----------+----------+------------+-----------------+---------+--------+
+|00606e153fb72d5...|1562010606|     37.17|   -104.7348|             null|     true|    true|
+|043157f6342b342...|1562019848| 37.050922|  -104.78587|             null|     true|   false|
+|043157f6342b342...|1562020544| 37.050922|  -104.78587|              0.0|    false|   false|
+|043157f6342b342...|1562021161| 37.050922|  -104.78587|              0.0|    false|   false|
+|043157f6342b342...|1562021967|  37.05095|  -104.78588|2.973213749604462|    false|    true|
+|048d7fb00ee2961...|1561939554|37.2647663|-105.0801919|             null|     true|    true|
+|048d7fb00ee2961...|1561939974|37.2693613|-105.0483915| 0.03213066238284|     true|    true|
+|048d7fb00ee2961...|1561940425|37.2520333|-104.9769234| 0.07353875781931|     true|    true|
 ```
 
 ---
 
-# Coalescing Events Part II
+# Coalescing: Counting Events
 
 Counting rows between first_row and last_row by annotating row numbers:
 
