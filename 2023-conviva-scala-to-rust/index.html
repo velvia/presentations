@@ -119,8 +119,6 @@ Huge momentum for Rust projects. Many not even listed here...
 
 <img src="about-conviva.png" width="100%" style="float:center">
 
-We are hiring across multiple roles/levels!
-
 ???
 Conviva does streaming, real-time, user experience analytics.
 We help our clients to instantly
@@ -201,6 +199,27 @@ class: center, middle
 
 ---
 
+# Performance Results - Gateway
+
+<img src="gateway-rust-cpu.png" width="90%" style="float:center">
+
+---
+
+# Performance Results - Gateway
+
+<img src="gateway-rust-mem.png" width="90%" style="float:center">
+
+---
+
+# Our Team and Challenges
+
+- At least 3 different teams located across 3 timezones
+- Widespread expertise in Scala, Java, Akka, functional
+- Some newcomers familiar with C++
+- Very little existing Rust expertise
+
+---
+
 # Promising Data Pipeline Port
 
 - Ported our newest Scala data platform to Rust
@@ -218,32 +237,11 @@ class: center, middle
 
 ---
 
-# Performance Results - Gateway
-
-<img src="gateway-rust-cpu.png" width="90%" style="float:center">
-
----
-
-# Performance Results - Gateway
-
-<img src="gateway-rust-mem.png" width="90%" style="float:center">
-
----
-
 class: center, middle
 
-# Rewriting a Scala Data Pipeline
+# Let's Dive into some Code!
 
-## Data Structures, Types, Async, etc.
-
----
-
-# Our Team and Challenges
-
-- At least 3 different teams located across 3 timezones
-- Widespread expertise in Scala, Java, Akka, functional
-- Some newcomers familiar with C++
-- Very little existing Rust expertise
+## Data Structures, Dispatch, Async, etc.
 
 ---
 
@@ -311,6 +309,10 @@ In the above, the `Timeline` enum can fit entirely in the stack and avoid all bo
 - The number of spans is very small, below limit set in code
 - The number of events in each span is very small (1 in this case, which is the common case)
 - The base type is a primitive, or a string which is below a certain length
+
+???
+It's important in Rust to think about data structure design early on, especially with respect
+to ownership and lifetimes.
 
 ---
 
@@ -622,6 +624,17 @@ https://www.arewelearningyet.com - ML focused
 - I guess all of Akka
 - "Less misleading compiler messages"
   - Rust error messages read better from the CLI, IMO (not an IDE)
+
+---
+
+# Takeaways
+
+- Porting part of our data stack to Rust has been worth it.
+- It's a long journey.
+- Structuring a project for successful onramp is really important
+- Think about data structure design early on
+
+We are hiring across multiple roles/levels!
 
 ---
 
