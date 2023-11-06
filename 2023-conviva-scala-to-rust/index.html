@@ -17,6 +17,9 @@
       font-family: 'Yanone Kaffeesatz';
       font-weight: normal;
     }
+    ul li {
+      padding: 3px;
+    }
     table, th, td {
       border: 1px solid black;
       margin: 25px 0;
@@ -72,30 +75,31 @@ http://velvia.github.io/presentations/2023-conviva-scala-to-rust
 
 ---
 
-# The Data World used to be All JVM
+# Conviva
 
-* Hadoop
-* Spark/Flink
-* Hive
-* Lucene/ElasticSearch
-* Apache Cassandra, HBase, Druid, etc.
-* Zookeeper
+<img src="about-conviva.png" width="100%" style="float:center">
 
----
-
-# Why the Data World is Going Native
-
-* The rise of Python and Data Science
-  * Led to AnyScale, Dask, and many other Python-oriented data frameworks
-* Rise of newer, developer-friendly native languages (Go, Swift, Rust, etc.)
-* Migration from Hadoop/HDFS to more cloud-based data architectures
-* Apache Arrow and other data interchange formats
-* Hardware architecture trends - stagnant clock frequencies, rise of GPUs etc
+???
+Conviva does streaming, real-time, user experience analytics.
+We help our clients to instantly
+troubleshoot CDN and other user-facing issues, for example.
 
 ---
 
-# Why Rust for Data Pipelines?
+# Massive Real-time Streaming Analytics
 
+- 5 trillion events processed per day
+- 800-2000GB/hour (not peak!!)
+- Started with custom Java code
+  - went through Spark Streaming and Flink iterations
+- Most backend data components in production are written in Scala
+- Today: 420 pods running custom Akka Streams processors
+
+---
+
+# Data World is Going Native and Rust
+
+* Going native: Python, end of Moore's Law, cloud compute
 * Safe, fast, and high-level abstractions
 * Functional data patterns - `map`, `fold`, pattern matching, etc.
 * Static dispatch and no allocations by default
@@ -115,43 +119,19 @@ Huge momentum for Rust projects. Many not even listed here...
 
 ---
 
-# Conviva
-
-<img src="about-conviva.png" width="100%" style="float:center">
-
-???
-Conviva does streaming, real-time, user experience analytics.
-We help our clients to instantly
-troubleshoot CDN and other user-facing issues, for example.
-
----
-
 class: center, middle
 
 # About our Architecture
 
 <div class="mermaid">
   graph LR;
-  SAE(Streaming<br>Analytics<br>Engine)
-  subgraph ingest
-    direction BT
-    Sensors --> Gateways
-  end
+  SAE(Streaming<br>Data<br>Pipeline)
+  Sensors --> Gateways
   Gateways --> Kafka
   Kafka --> SAE
   SAE --> DB[(Metrics<br>Database)]
   DB --> Dashboards
 </div>
-
----
-
-# Conviva: Massive Real-time Streaming Analytics
-
-- 5 trillion events processed per day
-- 800-2000GB/hour (not peak!!)
-- Started with custom Java code, also went through Spark Streaming and Flink iterations
-- Most services and components in production are written in Scala
-- Today: 420 pods running custom Akka Streams processors, >1600 Kafka partitions
 
 ---
 
@@ -162,25 +142,28 @@ class: center, middle
       - At the same time, significantly boost performance and reduce cost
 - One major gateway service
       - Increase efficiency for one major cost component
+      - Replace unsafe C++ that caused memory leaks and lots of headache
 - Some end user SDK / sensor code
       - Consolidate fragmented code base in C, C++, Swift, Android, etc.
 
 ---
 
-# Journey
+# Our Journey to Rust
 
-- Started with a Hackathon a year ago
-  - Wrote a small portion of Kafka ingestion in Rust
-  - Test out basic asynchronous processing, Rust dev & infrastructure
-- Gateway service was first rewritten to Go from Java/Scala
-  - After rewriting from Go to Rust, much more improvement than expected
-- 1.5 month sprint to port new Scala pipeline to Rust
-- Stopped to compare performance and validate it was worth going further
-- Now 20-25 people across 4 teams
+<div class="mermaid">
+  timeline
+    title From Hackathon to Multiple Teams
+      One year ago  : Hackathon -- Small Kafka ingestion project
+      April   :  1.5 month sprint, port Scala pipeline
+      June    :  Rewrite gateway go -> Rust
+      Now     :  20-25 people, 4 teams
+</div>
+
+“I like that if it compiles, I know it will work, so it gives confidence.”
 
 ---
 
-# Initial Rust Streaming Prototype Shows Promise
+# Promising Rust Hackathon
 
 <div class="mermaid">
   graph LR;
@@ -190,39 +173,98 @@ class: center, middle
 
 | Measurement  |  Improvement over Scala/Akka  |
 | -----------  | ----- |
-| Throughput (CPU) | 2.6x |
-| Memory used  |  12x  |
+| Throughput (CPU) | 2.6x more |
+| Memory used  |  12x less |
 
 - Mostly I/O-bound lightweight deserialization and processing workload
 - Found out Actix does not work well with Tokio
-- Initial recommendation was to stay with Scala, due partly to time constraints
 
 ---
 
 # Performance Results - Gateway
 
-<img src="gateway-rust-cpu.png" width="90%" style="float:center">
+  <img src="gateway-rust-cpu.png" width="80%" style="float:center">
+  <img src="gateway-rust-mem.png" width="80%" style="float:center">
 
 ---
 
-# Performance Results - Gateway
+# Key Lessons or Questions
 
-<img src="gateway-rust-mem.png" width="90%" style="float:center">
+What matters for a Rust port?
 
----
-
-# Our Team and Challenges
-
-- At least 3 different teams located across 3 timezones
-- Widespread expertise in Scala, Java, Akka, functional
-- Some newcomers familiar with C++
-- Very little existing Rust expertise
+| The 4 P's | ? |
+| --------- | ----- |
+| People    | How do we bring developers onboard?  |
+| Performance |  How do I get performance?  Data structures?  Static dispatch?   |
+| Patterns  | What coding patterns port well from Scala?  Async?  |
+| Project   | How do I build?  Tooling, IDEs?   |
 
 ---
 
-# Promising Data Pipeline Port
+class: center, middle
 
-- Ported our newest Scala data platform to Rust
+# People
+
+## How do we bring developers onboard?
+
+---
+
+# A Phased Rust Bringup
+
+We ported our main data pipeline in two phases:
+
+| Phase | Team | Rust Expertise | Work |
+| ----  | --------- | -------------- | ---- |
+| First | 3-5, very senior | 1-2 with significant Rust | Port core project components |
+| Second | 10-15, mixed, distributed | Most with zero Rust | Smaller, broken down tasks |
+
+- Have organized list of learning resources
+- 2-3 weeks to learn Rust and come up to speed
+
+---
+
+# Overcoming Challenges
+
+.left-column[
+  Difficulties:
+
+  - Lifetimes
+  - Compiler errors
+  - Porting previous patterns
+  - Ownership and async
+  - etc.
+]
+.right-column[
+  How we helped:
+  - Good docs
+  - Start with tests
+  - ChatGPT!
+  - Rust Book
+  - Office hours
+  - Lots of detailed reviews
+  - Split project into async and sync cores
+]
+
+???
+RustDoc is really powerful, it has compiler checks for examples.  Taking advantage of it is really important.
+Nothing beats a thoughtfully organized project.
+
+---
+
+class: center, middle
+
+# Performance
+
+## Data structures, static dispatch, etc.
+
+"I enjoy the fact that the default route is performant.  It makes you write performant code, and if you go out the way, it becomes explicit (e.g., with `dyn`, `Boxed`, or `clone` etc). "
+
+---
+
+# Porting from Scala: Huge Performance Win
+
+TODO: diagram
+- Ported our newest Scala data pipeline to Rust
 - More CPU-bound, heavy data processing with flexible processing definition
 - Neither Rust nor Scala is productionized nor optimized
 - Same architecture and same input/outputs
@@ -232,25 +274,16 @@ class: center, middle
 | Type of comparison |  Improvement over Scala  |
 | ---- | ---- |
 | Throughput, end to end |  22x  |
-| Throughput, single-threaded microbenchmark | 109x  |
-| Throughput, microbenchmark (bigger batch size) |  40x  |
+| Throughput, single-threaded microbenchmark | >= 40x  |
 
 ---
 
-class: center, middle
-
-# Let's Dive into some Code!
-
-## Data Structures, Dispatch, Async, etc.
-
----
-
-# Building a Flexible Streaming Engine
+# Building a Flexible Data Pipeline
 
 <div class="mermaid">
   graph LR;
   RawEvents(Raw Events)
-  RawEvents --> Extract1
+  RawEvents -->| List of numbers | Extract1
   RawEvents --> Extract2
   Extract1 --> DoSomeMath
   Extract2 --> TransformSomeFields
@@ -259,30 +292,61 @@ class: center, middle
   Filter1 --> MoreProcessing
 </div>
 
-- Configurable DAG of data operators for programmable stream processing
-- Need flexible data types depending on scenario
-- How to build an efficient yet dynamic stream processor?
+An interpreter passes time-ordered data between flexible DAG of operators.
+
+* Span1
+  - Start time: 1000
+  - End time: 1100
+  - Events: `["start", "click"]`
 
 ---
 
-# Scala: Object Graphs and Any
+# Data Structures: Scala vs Rust
 
-```scala
-class Timeline extends BufferedIterator[Span[Payload]]
+.left-column[
+Scala: Object Graph on Heap
 
-final case class Span[+A](start: Timestamp, end: Timestamp, payload: A) {
-  def mapPayload[B](f: A => B): Span[B] = copy(payload = f(payload))
-}
+<div class="mermaid">
+  graph TB;
+  ArraySpan["`Array[Span]`"]
+  TL(Timeline - BufferedIterator) --> ArraySpan
+  ArraySpan --> Span1["`Span(start, end, Payload)`"]
+  ArraySpan --> Span2["`Span(start, end, Payload)`"]
+  Span1 --> EventsAtSpanEnd("`EventsAtSpanEnd(Iterable[A])`")
+  EventsAtSpanEnd --> ArrayEvent["`Array[A]`"]
+</div>
+]
 
-type Event[+A] = Span[EventsAtSpanEnd[A]]
+.right-column[
+Rust: mostly stack based / 0 alloc:
 
-@newtype final case class EventsAtSpanEnd[+A](events: Iterable[A])
-```
+<div class="mermaid">
+  flowchart TB;
+  subgraph Timeline
+    subgraph OutputSpans
+      subgraph Span1
+        subgraph Events
+          EvA ~~~ EvB
+        end
+        TimeInterval ~~~ Events
+      end
+      subgraph Span2
+        Time2 ~~~ Events2
+      end
+      Span1 ~~~ Span2
+    end
+    Discriminant ~~~ OutputSpans
+  end
+</div>
+]
 
-- `BufferedIterator` must be on the heap
-- Each `Span` `Payload` is also boxed and on the heap, even for numbers
-  - To be dynamically interpretable, we need `BufferedIterator[Span[Any]]` in many places :(
-  - Yes, specialization is possible, at the cost of complexity
+???
+Scala: Buffers use Arrays internally, which is separate obj.  Each Span is a case class,
+that must be separate object.  The Payload is yet another obj because of boxing/Any.
+Events are a list which internally probably uses an Array.
+
+Rust: Using an enum for Timeline avoids boxing for generic types.
+OutputSpans is SmallVec, inline for <= 2.  Span is struct, inlined.
 
 ---
 
@@ -316,55 +380,6 @@ to ownership and lifetimes.
 
 ---
 
-# Comparison of Scala and Rust Data Structures
-
-.left-column[
-Scala:
-
-<div class="mermaid">
-  graph TB;
-  ArraySpan["`Array[Span]`"]
-  TL(Timeline - BufferedIterator) --> ArraySpan
-  ArraySpan --> Span1["`Span(start, end, Payload)`"]
-  ArraySpan --> Span2["`Span(start, end, Payload)`"]
-  Span1 --> EventsAtSpanEnd("`EventsAtSpanEnd(Iterable[A])`")
-  EventsAtSpanEnd --> ArrayEvent["`Array[A]`"]
-</div>
-]
-
-.right-column[
-Rust, mostly stack based / no allocations:
-
-<div class="mermaid">
-  flowchart TB;
-  subgraph Timeline
-    subgraph OutputSpans
-      subgraph Span1
-        subgraph Events
-          EvA ~~~ EvB
-        end
-        TimeInterval ~~~ Events
-      end
-      subgraph Span2
-        Time2 ~~~ Events2
-      end
-      Span1 ~~~ Span2
-    end
-    Discriminant ~~~ OutputSpans
-  end
-</div>
-]
-
-???
-Scala: Buffers use Arrays internally, which is separate obj.  Each Span is a case class,
-that must be separate object.  The Payload is yet another obj because of boxing/Any.
-Events are a list which internally probably uses an Array.
-
-Rust: Using an enum for Timeline avoids boxing for generic types.
-OutputSpans is SmallVec, inline for <= 2.  Span is struct, inlined.
-
----
-
 # Avoiding Allocations using SmallVec and SmallString
 
 [SmallVec](https://docs.rs/smallvec/latest/smallvec/) is something like this:
@@ -380,6 +395,10 @@ The enum can hold up to N items inline in an array with no allocations, but
 switches to the Heap variant if the number of items exceeds N.
 
 There are various crates for small strings and other data structures.
+
+???
+const N usize is a generic const type parameter
+syntax for arrays
 
 ---
 
@@ -465,36 +484,42 @@ where F: Fn(input: &Data) -> Data {
 
 ---
 
-# Actors: From Actix to our own mini Actors
+class: center, middle
 
-1. Initial Hackathon prototype used [Actix](https://actix.rs)
-  - Actix has its own event-loop / threading model, using [Arbiters](https://actix.rs/docs/actix/arbiter/)
-  - Difficult to co-exist with Tokio and configure both
-2. Moved to [tiny-tokio-actor](https://github.com/fdeantoni/tiny-tokio-actor)
-  - Really thin layer on top of Tokio
-  - 25% improvement over rdkafka + Tokio + Actix
-  - 2x improvement over Akka
-3. Ultimately wrote our own, 100-line mini Actor framework
-  - tiny-tokio-actor required messages to be `Clone` so we could not,
-    for example, send `OneShot` channels for other actors to reply
-  - Wanted `ActorRef<MessageType>` instead of `ActorRef<ActorType, MessageType>`
-  - supports `tell()` and `ask()` semantics
+# Patterns
+
+## Async, Type Classes, etc.
+
+---
+
+# Rust Async: Different Paradigms
+
+"Async: It is well designed... Yes, it is still pretty complicated piece of code, but the logic or the framework is easier to grasp compared to other languages."
+
+Having to use `Arc`: Data Structures are not Thread-safe by default!
+
+| Scala | Rust |
+| ----- | ---- |
+| Futures | futures, async functions |
+| ??      | async-await |
+| Actors(Akka)  | Actix, Bastion, etc. |
+| Async streams | Tokio streams  |
+| Reactive (Akka streams, Monix, ZIO)| reactive_rs, rxRust, etc. |
 
 ???
 Tokio is, by the way, Rust's dominant async library
+There isn't anything quite like async await in Scala, it is really nice
+in that it makes async seem like regular method calls.
 
 ---
 
 # Replacing Akka: Actors in Rust
 
+- [Actix](https://actix.rs) threading model doesn't mix well with Tokio
+- We moved to [tiny-tokio-actor](https://github.com/fdeantoni/tiny-tokio-actor), then wrote our own
+
 ```rust
 pub struct AnomalyActor {}
-
-impl AnomalyActor {
-    pub async fn create() -> ActorRef<Anomaly> {
-        channel_actor::start(AnomalyActor {}, 32).await
-    }
-}
 
 #[async_trait]
 impl ChannelActor<Anomaly, AnomalyActorError> for AnomalyActor {
@@ -520,24 +545,53 @@ impl ChannelActor<Anomaly, AnomalyActorError> for AnomalyActor {
 
 ---
 
-# Rust Bringup Plan
+# Other Patterns to Learn
 
-- Initial team of very senior developers with more Rust experience, came up to speed first
-  - and carry out bulk of initial Scala to Rust port
-- Have organized list of learning resources
-- 2-3 weeks to learn and come up to speed
-- Small projects, starting with synchronous code
-- Dedicate lots of time to reviewing code, helping others
+| Old Pattern | New Pattern |
+| ----------- | ----------- |
+| No inheritance | Use composition!<br>- Compose data structures<br>- Compose small Traits |
+| No exceptions | Use `Result` and `?` |
+| Data structures are not Thread safe | Learn to use `Arc` etc. |
+| Returning Iterators | Don't return things that borrow other things.  This makes life difficult. |
+
+---
+
+# Type Classes
+
+In Rust, type classes (Traits) are smaller and more compositional.
+```rust
+pub trait Inhale {
+  fn sniff(&self);
+}
+```
+
+You can implement new Traits for existing types, and have different impl's for different types.
+```rust
+impl Inhale for String {
+  fn sniff(&self) {
+    println!("I sniffed {}", self);
+  }
+}
+
+// Only implemented for specific N subtypes of MyStruct
+impl<N: Numeric> Inhale for MyStruct<N> {
+  fn sniff(&self) {
+    ....
+  }
+}
+```
 
 ---
 
 class: center, middle
 
-# "Cargo is the best build tool ever."
+# Project
+
+## Build, IDE, Tooling
 
 ---
 
-# Cargo and Rust Builds
+# "Cargo is the best build tool ever"
 
 - Almost no dependency conflicts due to multiple dep versioning
 - Configuration by convention - common directory/file layouts for example
@@ -565,45 +619,18 @@ and what 5 layers of config I need to change to get something to build correctly
 
 ---
 
-# General Rust Observations
+# IDEs, CI, and Tooling
 
-“I also like that if it compiles, I know it will work, so it gives confidence.”
+| | |
+| ---- | ---- |
+| IDEs/Editors | VSCode, RustRover (IntelliJ),<br>vim/emacs/etc with Rust Analyzer |
+| Code Coverage | VSCode inline, grcov/lcov, Tarpaulin (Linux only) |
+| Slow build times | Caching: [cargo-chef](https://github.com/LukeMathWalker/cargo-chef), rust-cache  |
+| Slow test times | cargo-nextest |
+| Property Testing | proptest |
+| Benchmarking | Criterion |
 
-Lifetimes are hard. "Just extracting out a basic function sometimes becomes something you have to think on."
-
-"I also enjoy the fact that the default route is performant.  It makes you write performant code, and if you go out the way, it becomes explicit (e.g., with `dyn`, `Boxed`, or `clone` etc). "
-
-"Async: It is well designed... Yes, it is still pretty complicated piece of code, but the logic or the framework is easier to grasp compared to other languages."
-
----
-
-# Challenges
-
-- "Rust is hard, takes a lot of getting used to"
-- Lifetimes
-- Understanding compiler errors
-- Some simple things are hard: eg returning Iterators
-- IDE support, especially debugging in VSCode
-- Learning new tooling: CI, code coverage, testing, etc.
-- Async:
-  - Frequent point of confusion: When to use Arc, Mutex, RwLock, when to `clone()`
-  - "Pin and Unpin look quite scary to me"
-
----
-
-# Overcoming Challenges
-
-- Have a smaller team start first and sort out some issues
-- Having good RustDoc, project documentation
-- Having people start with testing, end to end tests
-- Taking advantage of learning resources
-  * ChatGPT!
-  * Rust Book
-  * Specific talks about data structures, other topics
-- Office hours
-- Async:
-  - We divide our streaming platform into data logic and asynchronous streaming actor portions.
-  - Result: only teammates working in the streaming actor portions need to learn async
+https://blog.logrocket.com/optimizing-ci-cd-pipelines-rust-projects/
 
 ---
 
@@ -629,10 +656,10 @@ https://www.arewelearningyet.com - ML focused
 
 # Takeaways
 
-- Porting part of our data stack to Rust has been worth it.
-- It's a long journey.
+- It's a long journey but Rust is worth it.
 - Structuring a project for successful onramp is really important
 - Think about data structure design early on
+- Allow plenty of time to ramp up on Rust patterns, tools
 
 We are hiring across multiple roles/levels!
 
@@ -650,6 +677,57 @@ We are hiring across multiple roles/levels!
   <img src="rathtrevor_stars.jpeg" alt="Visit http://instagram.com/platypus.arts" width="90%">
 ]
 
+---
+
+Extra slides
+
+---
+
+# Data World is Going Native (from JVM)
+
+* The rise of Python and Data Science
+  * Led to AnyScale, Dask, and many other Python-oriented data frameworks
+* Rise of newer, developer-friendly native languages (Go, Swift, Rust, etc.)
+* Migration from Hadoop/HDFS to more cloud-based data architectures
+* Apache Arrow and other data interchange formats
+* Hardware architecture trends - end of Moore's Law, rise of GPUs etc
+
+---
+
+# Why We Went with our Own Actors
+
+1. Initial Hackathon prototype used [Actix](https://actix.rs)
+  - Actix has its own event-loop / threading model, using [Arbiters](https://actix.rs/docs/actix/arbiter/)
+  - Difficult to co-exist with Tokio and configure both
+2. Moved to [tiny-tokio-actor](https://github.com/fdeantoni/tiny-tokio-actor)
+  - Really thin layer on top of Tokio
+  - 25% improvement over rdkafka + Tokio + Actix
+3. Ultimately wrote our own, 100-line mini Actor framework
+  - tiny-tokio-actor required messages to be `Clone` so we could not,
+    for example, send `OneShot` channels for other actors to reply
+  - Wanted `ActorRef<MessageType>` instead of `ActorRef<ActorType, MessageType>`
+  - supports `tell()` and `ask()` semantics
+
+---
+
+# Scala: Object Graphs and Any
+
+```scala
+class Timeline extends BufferedIterator[Span[Payload]]
+
+final case class Span[+A](start: Timestamp, end: Timestamp, payload: A) {
+  def mapPayload[B](f: A => B): Span[B] = copy(payload = f(payload))
+}
+
+type Event[+A] = Span[EventsAtSpanEnd[A]]
+
+@newtype final case class EventsAtSpanEnd[+A](events: Iterable[A])
+```
+
+- `BufferedIterator` must be on the heap
+- Each `Span` `Payload` is also boxed and on the heap, even for numbers
+  - To be dynamically interpretable, we need `BufferedIterator[Span[Any]]` in many places :(
+  - Yes, specialization is possible, at the cost of complexity
 
     </textarea>
   <script src="https://remarkjs.com/downloads/remark-latest.min.js">
