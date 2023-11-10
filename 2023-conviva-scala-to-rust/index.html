@@ -43,6 +43,21 @@
     .remark-inline-code {
       font-family: 'Ubuntu Mono';
     }
+    .taskText {
+      fill: white;
+      text-anchor: middle;
+      font-size: medium;
+    }
+    .taskTextOutsideRight {
+      fill: black;
+      text-anchor: start;
+      font-size: medium;
+    }
+    .taskTextOutsideLeft {
+      fill: black;
+      text-anchor: end;
+      font-size: medium;
+    }
     /* Two-column layout */
     .left-column {
       /*color: #777;*/
@@ -137,26 +152,45 @@ class: center, middle
 
 # What We Are Porting to Rust
 
-- One of our main production streaming data pipelines
-      - Upgrade to next generation operator-based data architecture
-      - At the same time, significantly boost performance and reduce cost
-- One major gateway service
-      - Increase efficiency for one major cost component
-      - Replace unsafe C++ that caused memory leaks and lots of headache
-- Some end user SDK / sensor code
-      - Consolidate fragmented code base in C, C++, Swift, Android, etc.
+<div class="mermaid">
+  graph LR;
+  classDef highlighted fill:#99f,stroke:#333,stroke-width:4px
+  SAE(Streaming<br>Data<br>Pipeline)
+  Sensors:::highlighted --> Gateways:::highlighted
+  Gateways --> Kafka
+  Kafka --> SAE:::highlighted
+  SAE --> DB[(Metrics<br>Database)]
+  DB --> Dashboards
+</div>
+
+<div class="mermaid">
+  graph LR;
+  Notes1(Sensors: consolidate<br>fragmented code base)
+  Notes2(Gateway:<br>Improve on JVM and Go)
+  Notes3(Pipeline:<br>Improve efficiency<br>New operator architecture)
+  Notes1 ~~~ Notes2
+  Notes2 ~~~ Notes3
+</div>
 
 ---
 
 # Our Journey to Rust
 
 <div class="mermaid">
-  timeline
+  gantt
     title From Hackathon to Multiple Teams
-      One year ago  : Hackathon -- Small Kafka ingestion project
-      April   :  1.5 month sprint, port Scala pipeline
-      June    :  Rewrite gateway go -> Rust
-      Now     :  20-25 people, 4 teams
+    dateFormat YYYY-MM
+    axisFormat %y-%b
+    section Data Pipeline
+      Hackathon   :Small Kafka ingestion project, 2022-11, 30d
+      Scala prototype    :2023-02, 6w
+      Initial Rust Port  :  small team, 2023-04, 45d
+      Bring on more people     :2023-07, 8w
+      20-25 people 4 teams     :2023-11, 1w
+
+    section Gateway
+      Go port     :2023-07, 6w
+      Rust port      :2023-09, 4w
 </div>
 
 “I like that if it compiles, I know it will work, so it gives confidence.”
@@ -263,18 +297,31 @@ class: center, middle
 
 # Porting from Scala: Huge Performance Win
 
-TODO: diagram
-- Ported our newest Scala data pipeline to Rust
-- More CPU-bound, heavy data processing with flexible processing definition
+<div class="mermaid">
+  graph LR;
+  classDef highlighted fill:#99f,stroke:#333,stroke-width:4px
+  SAE(Streaming<br>Data<br>Pipeline)
+  Sensors --> Gateways
+  Gateways --> Kafka
+  Kafka --> SAE:::highlighted
+  SAE --> DB[(Metrics<br>Database)]
+  DB --> Dashboards
+</div>
+
+- CPU-bound, programmable, heavy data processing
 - Neither Rust nor Scala is productionized nor optimized
 - Same architecture and same input/outputs
   - Scala version was not designed for speed, lots of objects
-  - Rust version focused on static dispatch and minimizing allocations
+  - Rust: we chose static dispatch and minimizing allocations
 
 | Type of comparison |  Improvement over Scala  |
 | ---- | ---- |
 | Throughput, end to end |  22x  |
 | Throughput, single-threaded microbenchmark | >= 40x  |
+
+???
+With Rust, it was easier to make choices for speed, since Rust makes you have
+to decide explicitly either way.
 
 ---
 
@@ -298,6 +345,10 @@ An interpreter passes time-ordered data between flexible DAG of operators.
   - Start time: 1000
   - End time: 1100
   - Events: `["start", "click"]`
+* Span2
+  - Start time: 1100
+  - End time: 1300
+  - Events: `["ad_load"]`
 
 ---
 
@@ -308,11 +359,12 @@ Scala: Object Graph on Heap
 
 <div class="mermaid">
   graph TB;
+  classDef default font-size:24px
   ArraySpan["`Array[Span]`"]
-  TL(Timeline - BufferedIterator) --> ArraySpan
+  TL(Timeline - Seq) --> ArraySpan
   ArraySpan --> Span1["`Span(start, end, Payload)`"]
   ArraySpan --> Span2["`Span(start, end, Payload)`"]
-  Span1 --> EventsAtSpanEnd("`EventsAtSpanEnd(Iterable[A])`")
+  Span1 --> EventsAtSpanEnd("`Events(Seq[A])`")
   EventsAtSpanEnd --> ArrayEvent["`Array[A]`"]
 </div>
 ]
@@ -335,7 +387,7 @@ Rust: mostly stack based / 0 alloc:
       end
       Span1 ~~~ Span2
     end
-    Discriminant ~~~ OutputSpans
+    DataType ~~~ OutputSpans
   end
 </div>
 ]
@@ -631,6 +683,8 @@ and what 5 layers of config I need to change to get something to build correctly
 | Benchmarking | Criterion |
 
 https://blog.logrocket.com/optimizing-ci-cd-pipelines-rust-projects/
+
+VSCode's "LiveShare" feature for distributed pair programming is TOP NOTCH.
 
 ---
 
