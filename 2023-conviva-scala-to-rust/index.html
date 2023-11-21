@@ -397,8 +397,9 @@ Scala: Buffers use Arrays internally, which is separate obj.  Each Span is a cas
 that must be separate object.  The Payload is yet another obj because of boxing/Any.
 Events are a list which internally probably uses an Array.
 
-Rust: Using an enum for Timeline avoids boxing for generic types.
+Rust: Having structs avoids one layer of boxing.
 OutputSpans is SmallVec, inline for <= 2.  Span is struct, inlined.
+Having enums also helps
 
 ---
 
@@ -700,7 +701,7 @@ https://www.arewelearningyet.com - ML focused
 
 # What do we miss from Scala?
 
-- ScalaTest DSLs
+- More mature libraries - in some cases: HDFS, etc.
 - Good streaming libraries - like Monix, Akka Streams etc.
 - I guess all of Akka
 - "Less misleading compiler messages"
