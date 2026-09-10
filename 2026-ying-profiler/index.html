@@ -166,6 +166,7 @@ total 440
 # How does Ying Work?
 
 - Ying implements `GlobalAlloc` - passing on the alloc call to default System allocator
+  - NOTE: only profiles Rust allocations through GlobalAlloc.  Does not measure C++ or FFI code.
 - Only records a sample of new allocations
 - free's and reallocs are checked against existing sampled allocations
 - Sharded HashMap - `Arc<[RwLock<HashMap...>]>` - equiv of parking_lot but no allocations during lock
