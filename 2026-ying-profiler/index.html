@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>2026 Ying a Sampling Retained Memory Profiler</title>
+  <meta charset="utf-8">
+  <style>
+    @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+    @import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
+    @import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+
+    body {
+      font-family: 'Droid Serif';
+      font-size: 24px;
+    }
+    h1, h2, h3 {
+      font-family: 'Yanone Kaffeesatz';
+      font-weight: normal;
+    }
+    ul li {
+      padding: 3px;
+    }
+    table, th, td {
+      border: 1px solid black;
+      margin: 25px 0;
+      border-collapse: collapse;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+    }
+    thead tr {
+      background-color: #e08aff;
+    }
+    th, td {
+      padding: 8px 10px;
+    }
+    tbody tr:nth-of-type(even) {
+      background-color: #bcefe3fa;
+    }
+    tr:hover {
+      font-weight: bold;
+      color: #009879;
+    }
+    .remark-code,
+    .remark-inline-code {
+      font-family: 'Ubuntu Mono';
+    }
+    .taskText {
+      fill: white;
+      text-anchor: middle;
+      font-size: medium;
+    }
+    .taskTextOutsideRight {
+      fill: black;
+      text-anchor: start;
+      font-size: medium;
+    }
+    .taskTextOutsideLeft {
+      fill: black;
+      text-anchor: end;
+      font-size: medium;
+    }
+    /* Two-column layout */
+    .left-column {
+      /*color: #777;*/
+      width: 44%;
+      /*height: 92%;*/
+      float: left;
+    }
+    .right-column {
+      width: 44%;
+      float: right;
+      /*padding-top: 1em;*/
+    }
+  </style>
+</head>
+
+<body>
+  <textarea id="source">
+
+class: center, middle
+
+# ying-profiler: a Sampling, Retained Memory Profiler
+
+## Profile Prod Rust Apps _EASILY_
+
+.red[Evan Chan]
+
+.red[Principal Engineer - [Conviva](https://conviva.com)]
+
+http://velvia.github.io/presentations/2026-ying-profiler
+
+---
+
+# Why Another Memory Profiler?
+
+If your goal is debugging that prod memory issue, not many great choices:
+
+1. `jemalloc` - provides a sampling profiler (good!), but VERY hard to use, difficult to get retained memory
+2. `dhat` - nice project and UI, but very slow
+3. `ByteHound` is a great project, great UI, but very slow and generates huge files
+
+Many people end up instrumenting code, diffing total memory usage, or other ad-hoc methods.
+
+---
+
+# ying-profiler: a Sampling, Retained Memory Profiler
+
+- **Sampling** - lightweight enough to use in production
+- **Retained Memory** - crucial for leak detection, OOM troubleshooting
+- **Easy to Use** - two lines and you get automatic FlameGraphs on memory changes
+- No external tools needed to build flamegraphs at all!
+
+<img src="ying_profiler_crates_io.png" width="15%" style="float:left">
+https://crates.io/crates/ying-profiler
+<p>
+&nbsp;
+<p>
+&nbsp;
+<p>
+<img src="ying_profiler_github.png" width="15%" style="float:left">
+https://github.com/velvia/ying-profiler
+
+---
+
+# Ying is Super Easy to Use
+
+I built this to make debugging OOMs and Memory Leaks _EASY_.
+
+```rust
+use ying_profiler::YingProfiler;
+
+#[global_allocator]
+static YING_ALLOC: YingProfiler = YingProfiler::default();
+
+fn main() {
+YING_ALLOC.start_profiling();
+// ... the rest of your program
+}
+```
+
+Default settings:
+- Checks every 5 minutes
+- Writes flamegraphs and reports retained memory IF retained memory has changed by >= 10%
+- Designed to give you very succinct but useful reports
+
+---
+
+# `ls` and you Get the Story
+
+```bash
+$ ls -l ying-profiles/
+total 440
+-rw-r--r-- 1 evan staff 17583 Sep 9 16:45 ying.2026-09-09T16:45:05-04:00.15MB.report
+-rw-r--r-- 1 evan staff 50492 Sep 9 16:45 ying.2026-09-09T16:45:05-04:00.15MB.svg
+-rw-r--r-- 1 evan staff 16254 Sep 9 16:45 ying.2026-09-09T16:45:15-04:00.23MB.report
+-rw-r--r-- 1 evan staff 49262 Sep 9 16:45 ying.2026-09-09T16:45:15-04:00.23MB.svg
+-rw-r--r-- 1 evan staff 26162 Sep 9 16:48 ying.2026-09-09T16:48:51-04:00.28MB.report
+-rw-r--r-- 1 evan staff 50765 Sep 9 16:48 ying.2026-09-09T16:48:51-04:00.28MB.svg
+```
+
+- Each report/flamegraph gives you ISO timestamp and retained memory size
+- Filenames tell you the allocation story of the app
+- Easily pick out the most interesting or peak flamegraph
+
+---
+
+# How does Ying Work?
+
+- Ying implements `GlobalAlloc` - passing on the alloc call to default System allocator
+- Only records a sample of new allocations
+- free's and reallocs are checked against existing sampled allocations
+- Sharded HashMap - `Arc<[RwLock<HashMap...>]>` - equiv of parking_lot but no allocations during lock
+
+---
+
+# Profiler Configuration
+
+```rust
+pub struct YingProfiler {
+    /// Allocation sampling ratio. Eg: 500 means 1 in 500 allocations are sampled.
+    sampling_ratio: u32,
+    /// Prevent and dump stack trace for giant single allocations beyond a certain size
+    single_alloc_limit: usize,
+    ...
+}
+```
+
+---
+
+# Automatic Reporting Configuration
+
+```rust
+pub struct ProfilerRunner {
+  /// Number of seconds in between memory checks
+  #[builder(default = "DEFAULT_CHECK_INTERVAL_SECS")]
+  check_interval_secs: usize,
+  /// Percent change in retained memory to trigger a report
+  #[builder(default = "DEFAULT_PCT_CHANGE_TRIGGER")]
+  report_pct_change_trigger: usize,
+  /// Path to write top retained memory reports to
+  #[builder(default)]
+  reporting_path: String,
+  /// Expand inlined call stack symbols with a > ?
+  #[builder(default = "false")]
+  expand_frames: bool,
+  /// Generate flamegraphs at reporting_path
+  #[builder(default = "false")]
+  gen_flamegraphs: bool,
+}
+```
+
+---
+
+# Writing a Memory Profiler: Don't Do It
+
+- Do you like pain???   :)
+- Implementing and testing custom GlobalAlloc is NOT for the sane
+    - Must use `unsafe` :(
+    - Cannot use data structures that allocate unless we protect against re-entrancy
+    - We use an Atomic thread-local as a re-entrancy counter
+    - Protect against all places where reentrancy could occur
+- Standard lazy ThreadLocals are NOT safe - must use const thread locals
+- Cannot use any data structure whose locking allocates
+
+---
+
+# Thank You Very Much!
+
+.left-column[
+* https://velvia.github.io/about
+* https://github.com/velvia
+* [@evanfchan](https://twitter.com/Evanfchan)
+* [IG: @platypus.arts](http://instagram.com/platypus.arts)
+]
+.right-column[
+  <img src="../2023-conviva-scala-to-rust/rathtrevor_stars.jpeg" alt="Visit http://instagram.com/platypus.arts" width="90%">
+]
+
+
+    </textarea>
+  <script src="https://remarkjs.com/downloads/remark-latest.min.js">
+  </script>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    // mermaid.initialize({ startOnLoad: true });
+    mermaid.initialize({
+      startOnLoad: false,
+      cloneCssStyles: false,
+    });
+    function initMermaid(s) {
+      var diagrams = document.querySelectorAll('.mermaid');
+      var i;
+      for(i=0;i<diagrams.length;i++){
+        if(diagrams[i].offsetWidth>0){
+          mermaid.init(undefined, diagrams[i]);
+        }
+      }
+    }
+    slideshow.on('afterShowSlide', initMermaid);
+    initMermaid(slideshow.getSlides()[slideshow.getCurrentSlideIndex()]);
+  </script>
+  <script>
+    var slideshow = remark.create();
+  </script>
+  <script src="../remark-zoom.js" type="text/javascript"></script>
+</body>
+
+</html>
